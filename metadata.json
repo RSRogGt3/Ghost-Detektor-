@@ -1,0 +1,6 @@
+{
+  "name": "Geister-Detektor",
+  "description": "Atmosphärischer Ghostscanner mit Infra-Grün Filteransicht, interaktivem Fund-Verlauf und Echtzeit-Spirit-Box-Kommunikation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
