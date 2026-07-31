@@ -328,6 +328,19 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun freeGhost(ghost: GhostDetectionEntity) {
+        viewModelScope.launch {
+            if (_audioFeedbackEnabled.value) {
+                soundManager.playGhostFreedSound()
+                spiritTtsManager.speakSpiritBoxAudio("Entität befreit", emfLevel = 8f, dangerLevel = 1, soundManager = soundManager)
+            }
+            repository.deleteGhost(ghost)
+            if (_selectedGhostDetail.value?.id == ghost.id) {
+                _selectedGhostDetail.value = null
+            }
+        }
+    }
+
     fun deleteGhost(ghost: GhostDetectionEntity) {
         viewModelScope.launch {
             repository.deleteGhost(ghost)

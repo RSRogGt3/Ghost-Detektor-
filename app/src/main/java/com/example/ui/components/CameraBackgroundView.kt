@@ -48,7 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -71,7 +71,8 @@ fun CameraBackgroundView(
     modifier: Modifier = Modifier,
     primaryColor: Color = InfraGreenPrimary,
     overlayAlpha: Float = 0.65f,
-    isEnabled: Boolean = true
+    isEnabled: Boolean = true,
+    imageCapture: androidx.camera.core.ImageCapture? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -102,10 +103,13 @@ fun CameraBackgroundView(
             // Live Camera Feed View with CameraX
             AndroidView(
                 factory = { ctx ->
-                    val previewView = PreviewView(ctx).apply {
+                    val camContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        ctx.createAttributionContext("camera")
+                    } else ctx
+                    val previewView = PreviewView(camContext).apply {
                         scaleType = PreviewView.ScaleType.FILL_CENTER
                     }
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                    val cameraProviderFuture = ProcessCameraProvider.getInstance(camContext)
 
                     cameraProviderFuture.addListener({
                         try {
@@ -117,15 +121,24 @@ fun CameraBackgroundView(
                             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
                             cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(
-                                lifecycleOwner,
-                                cameraSelector,
-                                preview
-                            )
+                            if (imageCapture != null) {
+                                cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    cameraSelector,
+                                    preview,
+                                    imageCapture
+                                )
+                            } else {
+                                cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    cameraSelector,
+                                    preview
+                                )
+                            }
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
-                    }, ContextCompat.getMainExecutor(ctx))
+                    }, ContextCompat.getMainExecutor(camContext))
 
                     previewView
                 },

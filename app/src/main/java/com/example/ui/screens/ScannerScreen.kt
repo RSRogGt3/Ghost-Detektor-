@@ -24,8 +24,8 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -43,6 +43,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.example.util.ImageCaptureUtil
+import android.widget.Toast
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -90,6 +99,10 @@ fun ScannerScreen(
     var captureName by remember { mutableStateOf("") }
     var captureLocation by remember { mutableStateOf("") }
 
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val imageCapture = remember { ImageCapture.Builder().build() }
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -100,7 +113,8 @@ fun ScannerScreen(
         CameraBackgroundView(
             modifier = Modifier.fillMaxSize(),
             primaryColor = filterMode.primaryColor,
-            isEnabled = isCameraEnabled
+            isEnabled = isCameraEnabled,
+            imageCapture = imageCapture
         )
 
         // Animated Compass Overlay
@@ -204,7 +218,7 @@ fun ScannerScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { viewModel.toggleAudioFeedback() }) {
                         Icon(
-                            imageVector = if (audioFeedbackEnabled) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                            imageVector = if (audioFeedbackEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
                             contentDescription = "Audio Feedback Toggle",
                             tint = filterMode.primaryColor
                         )
@@ -306,33 +320,80 @@ fun ScannerScreen(
             }
 
             // Capture Anomaly / Save Entity Action Button
-            Button(
-                onClick = {
-                    showSaveDialog = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .testTag("save_entity_button"),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = filterMode.primaryColor
-                ),
-                shape = RoundedCornerShape(12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Save,
-                    contentDescription = null,
-                    tint = Color.Black
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = UiStrings.getQuickCaptureBtn(appLanguage),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color = Color.Black,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
+                Button(
+                    onClick = {
+                        showSaveDialog = true
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .testTag("save_entity_button"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = filterMode.primaryColor
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Save,
+                        contentDescription = null,
+                        tint = Color.Black
                     )
-                )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = UiStrings.getQuickCaptureBtn(appLanguage),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = Color.Black,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        imageCapture.takePicture(
+                            ContextCompat.getMainExecutor(context),
+                            object : ImageCapture.OnImageCapturedCallback() {
+                                override fun onCaptureSuccess(image: ImageProxy) {
+                                    coroutineScope.launch {
+                                        val success = ImageCaptureUtil.saveTintedImageToGallery(context, image, filterMode.primaryColor)
+                                        Toast.makeText(context, if (success) "Snapshot saved" else "Failed to save", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                                override fun onError(exception: ImageCaptureException) {
+                                    Toast.makeText(context, "Capture failed", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        )
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(52.dp)
+                        .testTag("capture_snapshot_button"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = filterMode.primaryColor
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        tint = Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "SNAPSHOT",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = Color.Black,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
             }
         }
     }

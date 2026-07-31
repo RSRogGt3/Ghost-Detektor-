@@ -302,6 +302,7 @@ fun HistoryScreen(
             onDismiss = { viewModel.selectGhostDetail(null) },
             onToggleFavorite = { viewModel.toggleFavorite(it) },
             onDelete = { viewModel.deleteGhost(it) },
+            onFree = { viewModel.freeGhost(it) },
             onUpdateNotes = { g, notes -> viewModel.updateGhostNotes(g, notes) },
             onSpeakText = { text -> viewModel.spiritTtsManager.speak(text) }
         )

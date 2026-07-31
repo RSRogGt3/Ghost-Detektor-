@@ -89,6 +89,15 @@ class SoundManager {
         }
     }
 
+    fun playGhostFreedSound() {
+        if (isMuted) return
+        scope.launch {
+            try {
+                playSpectralSweep(durationMs = 1500, startFreq = 200f, endFreq = 900f, volume = 0.5f)
+            } catch (_: Exception) {}
+        }
+    }
+
     private fun playSubBassDrone(durationMs: Int, baseFreq: Float, volume: Float) {
         val sampleRate = 22050
         val numSamples = (sampleRate * (durationMs / 1000.0)).toInt()

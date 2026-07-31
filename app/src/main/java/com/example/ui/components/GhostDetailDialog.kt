@@ -20,7 +20,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -66,6 +67,7 @@ fun GhostDetailDialog(
     onDismiss: () -> Unit,
     onToggleFavorite: (GhostDetectionEntity) -> Unit,
     onDelete: (GhostDetectionEntity) -> Unit,
+    onFree: (GhostDetectionEntity) -> Unit,
     onUpdateNotes: (GhostDetectionEntity, String) -> Unit,
     onSpeakText: (String) -> Unit
 ) {
@@ -270,7 +272,7 @@ fun GhostDetailDialog(
                                 modifier = Modifier.height(28.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.VolumeUp,
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                     contentDescription = "EVP Vorlesen",
                                     tint = InfraGreenPrimary
                                 )
@@ -338,6 +340,28 @@ fun GhostDetailDialog(
                             )
                         )
                     }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Bottom Action: Free Ghost
+                Button(
+                    onClick = { onFree(ghost) },
+                    colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary.copy(alpha = 0.2f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, InfraGreenPrimary),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = null,
+                        tint = InfraGreenPrimary
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "ENTITÄT BEFREIEN",
+                        color = InfraGreenPrimary,
+                        style = MaterialTheme.typography.labelLarge.copy(fontFamily = FontFamily.Monospace)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
