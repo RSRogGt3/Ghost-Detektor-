@@ -141,6 +141,9 @@ fun ScannerScreen(
             FilterMode.THERMAL_RED -> Color(0xFFFF4400).copy(alpha = 0.15f)
             FilterMode.QUANTUM_MATRIX -> Color(0xFF00E5FF).copy(alpha = 0.12f)
             FilterMode.ULTRAVIOLET -> Color(0xFFBB33FF).copy(alpha = 0.15f)
+            FilterMode.INFRA_YELLOW -> Color(0xFFFFCC00).copy(alpha = 0.12f)
+            FilterMode.INFRA_BLUE -> Color(0xFF0088FF).copy(alpha = 0.12f)
+            FilterMode.INFRARED -> Color(0xFFFF2A2A).copy(alpha = 0.15f)
         }
         Box(
             modifier = Modifier
@@ -165,14 +168,14 @@ fun ScannerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // HUD Top Header Bar
+            // HUD Top Header Bar with Deep Obsidian Dark Theme & Glowing Neon Accents
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.Black.copy(alpha = 0.7f))
-                    .border(1.dp, filterMode.primaryColor.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF070C09).copy(alpha = 0.88f))
+                    .border(1.5.dp, filterMode.primaryColor.copy(alpha = 0.75f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -190,13 +193,13 @@ fun ScannerScreen(
                                 color = filterMode.primaryColor,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
+                                letterSpacing = 1.2.sp
                             )
                         )
                         Text(
                             text = if (isSensorActive) UiStrings.getSensorHardwareActive(appLanguage) else UiStrings.getSensorAtmospheric(appLanguage),
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = filterMode.primaryColor.copy(alpha = 0.7f),
+                                color = filterMode.primaryColor.copy(alpha = 0.8f),
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 9.sp
                             )

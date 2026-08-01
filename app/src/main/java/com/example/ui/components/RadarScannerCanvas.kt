@@ -44,7 +44,10 @@ enum class FilterMode(val displayName: String, val primaryColor: Color, val acce
     INFRA_GREEN("INFRA-GRÜN", InfraGreenPrimary, InfraGreenTertiary),
     THERMAL_RED("THERMISCH", ThermalAmber, AlertInfraRed),
     QUANTUM_MATRIX("MATRIX GRID", InfraGreenSecondary, Color(0xFF00FFCC)),
-    ULTRAVIOLET("ULTRAVIOLETT", UvViolet, Color(0xFFFF44EE))
+    ULTRAVIOLET("ULTRAVIOLETT", UvViolet, Color(0xFFFF44EE)),
+    INFRA_YELLOW("INFRA-GELB", Color(0xFFFFDD00), Color(0xFFFFEE88)),
+    INFRA_BLUE("INFRA-BLAU", Color(0xFF00A8FF), Color(0xFF88EEFF)),
+    INFRARED("INFRAROT", Color(0xFFFF2A2A), Color(0xFFFF9999))
 }
 
 @Composable

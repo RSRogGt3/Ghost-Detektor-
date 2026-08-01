@@ -101,15 +101,20 @@ fun CameraBackgroundView(
     Box(modifier = modifier.fillMaxSize()) {
         if (isEnabled && hasCameraPermission) {
             // Live Camera Feed View with CameraX
+            DisposableEffect(lifecycleOwner) {
+                onDispose {
+                    try {
+                        ProcessCameraProvider.getInstance(context).get().unbindAll()
+                    } catch (_: Exception) {}
+                }
+            }
+
             AndroidView(
                 factory = { ctx ->
-                    val camContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                        ctx.createAttributionContext("camera")
-                    } else ctx
-                    val previewView = PreviewView(camContext).apply {
+                    val previewView = PreviewView(ctx).apply {
                         scaleType = PreviewView.ScaleType.FILL_CENTER
                     }
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(camContext)
+                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
 
                     cameraProviderFuture.addListener({
                         try {
@@ -138,7 +143,7 @@ fun CameraBackgroundView(
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
-                    }, ContextCompat.getMainExecutor(camContext))
+                    }, ContextCompat.getMainExecutor(ctx))
 
                     previewView
                 },

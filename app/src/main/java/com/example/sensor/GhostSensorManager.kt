@@ -19,12 +19,8 @@ import kotlin.math.sqrt
 
 class GhostSensorManager(context: Context) : SensorEventListener {
 
-    private val attributionContext = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        context.createAttributionContext("location")
-    } else context
-
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-    private val locationManager = attributionContext.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+    private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
 
     private val accelerometer: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val magnetometer: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)

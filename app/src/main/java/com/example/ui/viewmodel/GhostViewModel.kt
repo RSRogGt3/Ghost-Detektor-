@@ -8,11 +8,13 @@ import android.os.VibratorManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ai.SpiritAiEngine
+import com.example.audio.MicrophoneAudioAnalyzer
 import com.example.audio.SoundManager
 import com.example.audio.SpiritTtsManager
 import com.example.data.GhostDatabase
 import com.example.data.GhostDetectionEntity
 import com.example.data.GhostRepository
+import com.example.data.SpiritLogEntry
 import com.example.sensor.GhostSensorManager
 import com.example.ui.components.FilterMode
 import com.example.ui.components.RadarBlip
@@ -33,6 +35,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: GhostRepository
     val soundManager = SoundManager()
     val spiritTtsManager = SpiritTtsManager(application)
+    val microphoneAnalyzer = MicrophoneAudioAnalyzer(application)
     private val spiritAiEngine = SpiritAiEngine()
     val sensorManager = GhostSensorManager(application)
     
@@ -117,12 +120,76 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     private val _autoSpiritBoxEnabled = MutableStateFlow(false)
     val autoSpiritBoxEnabled: StateFlow<Boolean> = _autoSpiritBoxEnabled.asStateFlow()
 
+    private val _spiritPhraseLog = MutableStateFlow<List<SpiritLogEntry>>(emptyList())
+    val spiritPhraseLog: StateFlow<List<SpiritLogEntry>> = _spiritPhraseLog.asStateFlow()
+
+    private val _showSpiritLogOverlay = MutableStateFlow(false)
+    val showSpiritLogOverlay: StateFlow<Boolean> = _showSpiritLogOverlay.asStateFlow()
+
+    fun toggleSpiritLogOverlay(show: Boolean) {
+        _showSpiritLogOverlay.value = show
+    }
+
+    fun clearSpiritLog() {
+        _spiritPhraseLog.value = emptyList()
+    }
+
     // Selected Ghost detail for modal dialog
     private val _selectedGhostDetail = MutableStateFlow<GhostDetectionEntity?>(null)
     val selectedGhostDetail: StateFlow<GhostDetectionEntity?> = _selectedGhostDetail.asStateFlow()
 
     private var scanJob: Job? = null
     private var chartHistoryJob: Job? = null
+    private var autoSpiritJob: Job? = null
+
+    fun toggleAutoSpiritBox() {
+        val newState = !_autoSpiritBoxEnabled.value
+        _autoSpiritBoxEnabled.value = newState
+        if (newState) {
+            autoSpiritJob?.cancel()
+            autoSpiritJob = viewModelScope.launch {
+                while (_autoSpiritBoxEnabled.value) {
+                    if (!_isGeneratingSpiritResponse.value && !spiritTtsManager.isSpeaking.value) {
+                        val questions = listOf(
+                            "Bist du bei uns im Raum?",
+                            "Wie heißt du?",
+                            "Warum bist du hier?",
+                            "Bist du friedlich oder gefährlich?",
+                            "Kannst du ein Zeichen geben?",
+                            "Wer hat dich gerufen?",
+                            "Hörst du meine Stimme?",
+                            "Wo steckst du?",
+                            "Zeige deine Präsenz!",
+                            "Bist du allein hier?"
+                        )
+                        askSpirit(questions.random())
+                        delay(10000L) // 10 seconds interval after asking
+                    } else {
+                        delay(500L) // Wait until current sentence/speech finishes
+                    }
+                }
+            }
+        } else {
+            autoSpiritJob?.cancel()
+            autoSpiritJob = null
+        }
+    }
+
+    fun askRandomQuestion() {
+        val questions = listOf(
+            "Bist du bei uns im Raum?",
+            "Wie heißt du?",
+            "Warum bist du hier?",
+            "Bist du friedlich oder gefährlich?",
+            "Kannst du ein Zeichen geben?",
+            "Wer hat dich gerufen?",
+            "Hörst du meine Stimme?",
+            "Wo steckst du?",
+            "Zeige deine Präsenz!",
+            "Bist du allein hier?"
+        )
+        askSpirit(questions.random())
+    }
 
     init {
         val database = GhostDatabase.getDatabase(application)
@@ -312,6 +379,9 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                     FilterMode.THERMAL_RED -> "#FF9900"
                     FilterMode.QUANTUM_MATRIX -> "#00E5FF"
                     FilterMode.ULTRAVIOLET -> "#BB33FF"
+                    FilterMode.INFRA_YELLOW -> "#FFDD00"
+                    FilterMode.INFRA_BLUE -> "#00A8FF"
+                    FilterMode.INFRARED -> "#FF2A2A"
                 },
                 lastWords = _spiritResponse.value
             )
@@ -396,6 +466,14 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             _spiritResponse.value = creepyPhrase
             _isGeneratingSpiritResponse.value = false
 
+            val logEntry = SpiritLogEntry(
+                question = "Sensor-Ätherabtastung",
+                phrase = creepyPhrase,
+                emfLevel = emf,
+                dangerLevel = danger
+            )
+            _spiritPhraseLog.value = listOf(logEntry) + _spiritPhraseLog.value
+
             // Voice synthesis with Spirit-Box audio sweep & dynamic pitch
             spiritTtsManager.speakSpiritBoxAudio(
                 text = creepyPhrase,
@@ -426,6 +504,14 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             _spiritResponse.value = response
             _isGeneratingSpiritResponse.value = false
 
+            val logEntry = SpiritLogEntry(
+                question = questionText,
+                phrase = response,
+                emfLevel = _emfLevel.value,
+                dangerLevel = _dangerLevel.value
+            )
+            _spiritPhraseLog.value = listOf(logEntry) + _spiritPhraseLog.value
+
             // Vocalize through Text-to-Speech with Spirit Box audio effects
             spiritTtsManager.speakSpiritBoxAudio(
                 text = response,
@@ -436,9 +522,24 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun toggleMicListening() {
+        if (microphoneAnalyzer.isListening.value) {
+            microphoneAnalyzer.stopListening()
+        } else {
+            microphoneAnalyzer.startListening(viewModelScope) {
+                // Auto-trigger spirit query when voice speech burst detected into microphone
+                if (!_isGeneratingSpiritResponse.value) {
+                    askSpirit("Aura-Akustik-Eingabe über Mikrofon")
+                }
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
+        autoSpiritJob?.cancel()
         sensorManager.stopListening()
+        microphoneAnalyzer.stopListening()
         soundManager.release()
         spiritTtsManager.release()
     }

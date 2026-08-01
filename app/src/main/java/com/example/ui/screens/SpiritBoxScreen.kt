@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.ui.components.AudioWaveformCanvas
+import com.example.ui.components.SpiritLogOverlayDialog
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
@@ -80,9 +81,15 @@ fun SpiritBoxScreen(
     val spiritQuestion by viewModel.spiritQuestion.collectAsStateWithLifecycle()
     val spiritResponse by viewModel.spiritResponse.collectAsStateWithLifecycle()
     val isGenerating by viewModel.isGeneratingSpiritResponse.collectAsStateWithLifecycle()
+    val autoSpiritBoxEnabled by viewModel.autoSpiritBoxEnabled.collectAsStateWithLifecycle()
+    val showLogOverlay by viewModel.showSpiritLogOverlay.collectAsStateWithLifecycle()
+    val spiritLogList by viewModel.spiritPhraseLog.collectAsStateWithLifecycle()
     val isSpeaking by viewModel.spiritTtsManager.isSpeaking.collectAsStateWithLifecycle()
     val currentPitch by viewModel.spiritTtsManager.pitch.collectAsStateWithLifecycle()
     val currentRate by viewModel.spiritTtsManager.speechRate.collectAsStateWithLifecycle()
+
+    val micAmplitude by viewModel.microphoneAnalyzer.amplitude.collectAsStateWithLifecycle()
+    val isMicListening by viewModel.microphoneAnalyzer.isListening.collectAsStateWithLifecycle()
 
     val currentEmf by viewModel.emfLevel.collectAsStateWithLifecycle()
     val currentDanger by viewModel.dangerLevel.collectAsStateWithLifecycle()
@@ -276,9 +283,126 @@ fun SpiritBoxScreen(
 
                     AudioWaveformCanvas(
                         isActive = isSpeaking || isGenerating,
+                        isGenerating = isGenerating,
+                        liveMicAmplitude = micAmplitude,
                         waveColor = InfraGreenPrimary,
-                        amplitudeMultiplier = if (isSpeaking) 1.5f else 0.5f
+                        amplitudeMultiplier = if (isSpeaking || isGenerating) 1.6f else 0.5f
                     )
+                }
+            }
+
+            // Live Microphone Input & Duden Sprach-AI Status Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth().testTag("live_mic_ai_card")
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (isMicListening) Icons.Default.Mic else Icons.Default.MicOff,
+                                contentDescription = null,
+                                tint = InfraGreenPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "ECHTZEIT MIKROFON & DUDEN SPRACH-AI",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = InfraGreenPrimary,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        Button(
+                            onClick = { viewModel.toggleMicListening() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isMicListening) InfraGreenPrimary else InfraGreenSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = if (isMicListening) "MIKROFON: AN" else "MIKROFON: AUS",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isMicListening) Color.Black else InfraGreenTextPrimary,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+
+                    if (isMicListening) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "MIKROFON PEGGEL (DB):",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = InfraGreenTextMuted,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                                Text(
+                                    text = "${(micAmplitude * 100).toInt()}% PEAK",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = InfraGreenPrimary,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            }
+
+                            // Dynamic Live Microphone Level Meter Bar
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(InfraGreenSurfaceVariant)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(micAmplitude.coerceIn(0.05f, 1f))
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(if (micAmplitude > 0.4f) Color.Red else InfraGreenPrimary)
+                                )
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(InfraGreenSurfaceVariant)
+                            .padding(8.dp)
+                    ) {
+                        Text(
+                            text = "✨ ERWEITERTE DUDEN SPRACH-AI: Nutzt gemini-3.5-flash & reichhaltigen deutschen Wortschatz (Substantive, Verben & Parapsychologie-Begriffe) für tiefgründige Geist-Dialoge.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = InfraGreenTextPrimary,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp
+                            )
+                        )
+                    }
                 }
             }
 
@@ -449,6 +573,110 @@ fun SpiritBoxScreen(
                         )
                     }
                 }
+            }
+
+            // Auto Spirit Box & Random 10s Mode Control Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "AUTO-FRAGEN (10 SEK. INTERVALL):",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = InfraGreenPrimary,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (autoSpiritBoxEnabled) "Aktiv: Zufällige Fragen & Sätze alle 10s" else "Inaktiv: Manuell fragen",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (autoSpiritBoxEnabled) InfraGreenPrimary else InfraGreenTextMuted,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { viewModel.askRandomQuestion() },
+                            colors = ButtonDefaults.buttonColors(containerColor = InfraGreenSurfaceVariant),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = "ZUFALL",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = InfraGreenPrimary,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        Button(
+                            onClick = { viewModel.toggleAutoSpiritBox() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (autoSpiritBoxEnabled) InfraGreenPrimary else InfraGreenSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = if (autoSpiritBoxEnabled) "AUTO: AN" else "AUTO: AUS",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (autoSpiritBoxEnabled) Color.Black else InfraGreenTextPrimary,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Logbook Overlay Access Button
+            Button(
+                onClick = { viewModel.toggleSpiritLogOverlay(true) },
+                colors = ButtonDefaults.buttonColors(containerColor = InfraGreenSurfaceVariant),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, InfraGreenPrimary, RoundedCornerShape(10.dp))
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(InfraGreenPrimary, RoundedCornerShape(50))
+                    )
+                    Text(
+                        text = "PARANORMALES LOGBUCH ÖFFNEN (${spiritLogList.size} PHRASEN)",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            color = InfraGreenPrimary,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+            }
+
+            if (showLogOverlay) {
+                SpiritLogOverlayDialog(
+                    logs = spiritLogList,
+                    onDismiss = { viewModel.toggleSpiritLogOverlay(false) },
+                    onClearLogs = { viewModel.clearSpiritLog() }
+                )
             }
 
             // Preset Question Chips
