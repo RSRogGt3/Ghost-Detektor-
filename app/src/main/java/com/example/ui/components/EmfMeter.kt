@@ -14,11 +14,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateContentSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +58,8 @@ fun EmfMeter(
         label = "emf_anim"
     )
 
+    var isMinimized by remember { mutableStateOf(false) }
+
     val fillRatio = (animatedEmf / 10f).coerceIn(0f, 1f)
     val statusColor = when {
         dangerLevel >= 4 || animatedEmf > 7.5f -> AlertInfraRed
@@ -62,6 +74,7 @@ fun EmfMeter(
             .background(InfraGreenSurface)
             .border(1.dp, InfraGreenBorder, RoundedCornerShape(12.dp))
             .padding(14.dp)
+            .animateContentSize()
             .testTag("emf_meter_container")
     ) {
         Column(
@@ -92,17 +105,35 @@ fun EmfMeter(
                     )
                 }
 
-                Text(
-                    text = String.format("%.1f mG", animatedEmf),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color = statusColor,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = String.format("%.1f mG", animatedEmf),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = statusColor,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
                     )
-                )
+
+                    IconButton(
+                        onClick = { isMinimized = !isMinimized },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isMinimized) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                            contentDescription = if (isMinimized) "Ausklappen" else "Minimieren",
+                            tint = statusColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
 
-            // LED Segment Meter Bar (10 segments)
+            if (!isMinimized) {
+                // LED Segment Meter Bar (10 segments)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -153,6 +184,7 @@ fun EmfMeter(
                         fontWeight = FontWeight.Bold
                     )
                 )
+            }
             }
         }
     }

@@ -44,13 +44,29 @@ class MicrophoneAudioAnalyzer(private val context: Context) {
 
         try {
             val bufferSize = if (minBufferSize > 0) minBufferSize * 2 else 4096
-            audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.MIC,
-                sampleRate,
-                channelConfig,
-                audioFormat,
-                bufferSize
-            )
+            
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                audioRecord = AudioRecord.Builder()
+                    .setAudioSource(MediaRecorder.AudioSource.MIC)
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(audioFormat)
+                            .setSampleRate(sampleRate)
+                            .setChannelMask(channelConfig)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(bufferSize)
+                    .setContext(context)
+                    .build()
+            } else {
+                audioRecord = AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    sampleRate,
+                    channelConfig,
+                    audioFormat,
+                    bufferSize
+                )
+            }
 
             if (audioRecord?.state == AudioRecord.STATE_INITIALIZED) {
                 audioRecord?.startRecording()
@@ -62,35 +78,41 @@ class MicrophoneAudioAnalyzer(private val context: Context) {
                     var silentFrameCount = 0
 
                     while (isActive && _isListening.value) {
-                        val read = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-                        if (read > 0) {
-                            var sumSquares = 0.0
-                            for (i in 0 until read) {
-                                val sample = buffer[i].toDouble()
-                                sumSquares += sample * sample
-                            }
-                            val rms = sqrt(sumSquares / read)
-                            // Normalized amplitude approx 0 to 1
-                            val normalizedAmp = (rms / 8000.0).toFloat().coerceIn(0f, 1f)
-                            _amplitude.value = normalizedAmp
+                        try {
+                            val record = audioRecord ?: break
+                            if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) break
+                            val read = record.read(buffer, 0, buffer.size)
+                            if (read > 0) {
+                                var sumSquares = 0.0
+                                for (i in 0 until read) {
+                                    val sample = buffer[i].toDouble()
+                                    sumSquares += sample * sample
+                                }
+                                val rms = sqrt(sumSquares / read)
+                                // Normalized amplitude approx 0 to 1
+                                val normalizedAmp = (rms / 8000.0).toFloat().coerceIn(0f, 1f)
+                                _amplitude.value = normalizedAmp
 
-                            // Speech burst detection logic (above threshold)
-                            if (normalizedAmp > 0.18f) {
-                                speechFrameCount++
-                                silentFrameCount = 0
-                            } else {
-                                if (speechFrameCount > 6) { // was speaking for a moment
-                                    silentFrameCount++
-                                    if (silentFrameCount > 10) { // now paused after speaking
-                                        _speechDetectedEvent.value = true
-                                        onSpeechDetected?.invoke()
-                                        speechFrameCount = 0
-                                        silentFrameCount = 0
-                                    }
+                                // Speech burst detection logic (above threshold)
+                                if (normalizedAmp > 0.18f) {
+                                    speechFrameCount++
+                                    silentFrameCount = 0
                                 } else {
-                                    speechFrameCount = 0
+                                    if (speechFrameCount > 6) { // was speaking for a moment
+                                        silentFrameCount++
+                                        if (silentFrameCount > 10) { // now paused after speaking
+                                            _speechDetectedEvent.value = true
+                                            onSpeechDetected?.invoke()
+                                            speechFrameCount = 0
+                                            silentFrameCount = 0
+                                        }
+                                    } else {
+                                        speechFrameCount = 0
+                                    }
                                 }
                             }
+                        } catch (_: Exception) {
+                            break
                         }
                     }
                 }

@@ -19,11 +19,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateContentSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +82,7 @@ fun RealtimeEmfLineChart(
     // Calculation of metrics (Peak & Avg)
     val peakValue = dataPoints.maxOrNull() ?: currentEmf
     val avgValue = if (dataPoints.isNotEmpty()) dataPoints.average().toFloat() else currentEmf
+    var isMinimized by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -81,6 +91,7 @@ fun RealtimeEmfLineChart(
             .background(backgroundColor)
             .border(1.dp, InfraGreenBorder.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
             .padding(14.dp)
+            .animateContentSize()
             .testTag("realtime_emf_chart_container")
     ) {
         Column(
@@ -112,7 +123,7 @@ fun RealtimeEmfLineChart(
                 }
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Avg Badge
@@ -156,8 +167,22 @@ fun RealtimeEmfLineChart(
                             )
                         )
                     }
+
+                    IconButton(
+                        onClick = { isMinimized = !isMinimized },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isMinimized) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                            contentDescription = if (isMinimized) "Ausklappen" else "Minimieren",
+                            tint = lineColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             }
+
+            if (!isMinimized) {
 
             // Real-Time Neon Green D3 Line Chart Canvas
             Canvas(
@@ -317,6 +342,7 @@ fun RealtimeEmfLineChart(
                         fontWeight = FontWeight.Bold
                     )
                 )
+            }
             }
         }
     }

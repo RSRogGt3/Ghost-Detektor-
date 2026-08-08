@@ -6,6 +6,7 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.ui.theme.AlertInfraRed
@@ -31,13 +33,21 @@ import com.example.ui.theme.UvViolet
 import kotlin.math.cos
 import kotlin.math.sin
 
+enum class EntityCategory(val displayName: String, val actionText: String) {
+    GHOST("Geist", "✨ BEFREIEN"),
+    DEMON("Dämon", "🔴 DÄMON FANGEN"),
+    VAMPIRE("Vampir", "🟣 VAMPIR FANGEN"),
+    DIMENSION_RIFT("Dimensionsriss", "🌀 DIMENSION SCHLIESSEN")
+}
+
 data class RadarBlip(
     val id: String,
     val angleDegrees: Float,
     val distanceRatio: Float, // 0.1 to 0.9
     val dangerLevel: Int,
     val color: Color = InfraGreenPrimary,
-    val label: String = "EMF-Fokus"
+    val label: String = "EMF-Fokus",
+    val category: EntityCategory = EntityCategory.GHOST
 )
 
 enum class FilterMode(val displayName: String, val primaryColor: Color, val accentColor: Color) {
@@ -56,9 +66,13 @@ fun RadarScannerCanvas(
     blips: List<RadarBlip> = emptyList(),
     filterMode: FilterMode = FilterMode.INFRA_GREEN,
     sweepSpeedMs: Int = 3000,
-    isScanning: Boolean = true
+    isScanning: Boolean = true,
+    isLiberating: Boolean = false,
+    onLiberateBlip: ((RadarBlip) -> Unit)? = null,
+    onLiberateAll: (() -> Unit)? = null
 ) {
     val rotationAnim = remember { Animatable(0f) }
+    val liberationWaveAnim = remember { Animatable(0f) }
 
     LaunchedEffect(isScanning, sweepSpeedMs) {
         if (isScanning) {
@@ -74,6 +88,16 @@ fun RadarScannerCanvas(
         }
     }
 
+    LaunchedEffect(isLiberating) {
+        if (isLiberating) {
+            liberationWaveAnim.snapTo(0f)
+            liberationWaveAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(1800, easing = LinearEasing)
+            )
+        }
+    }
+
     val primaryColor = filterMode.primaryColor
     val accentColor = filterMode.accentColor
 
@@ -83,7 +107,38 @@ fun RadarScannerCanvas(
             .testTag("radar_scanner_canvas"),
         contentAlignment = Alignment.Center
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(blips) {
+                    detectTapGestures { tapOffset ->
+                        val w = size.width.toFloat()
+                        val h = size.height.toFloat()
+                        val center = Offset(w / 2f, h / 2f)
+                        val maxRadius = (minOf(w, h) / 2f) * 0.9f
+
+                        // Check if tap hit near any radar blip
+                        var hitBlip: RadarBlip? = null
+                        blips.forEach { blip ->
+                            val blipRad = Math.toRadians(blip.angleDegrees.toDouble())
+                            val distance = maxRadius * blip.distanceRatio.coerceIn(0.15f, 0.85f)
+                            val bx = center.x + distance * cos(blipRad).toFloat()
+                            val by = center.y + distance * sin(blipRad).toFloat()
+
+                            val distToTap = kotlin.math.sqrt((tapOffset.x - bx) * (tapOffset.x - bx) + (tapOffset.y - by) * (tapOffset.y - by))
+                            if (distToTap < 100f) {
+                                hitBlip = blip
+                            }
+                        }
+
+                        if (hitBlip != null) {
+                            onLiberateBlip?.invoke(hitBlip!!)
+                        } else {
+                            onLiberateAll?.invoke()
+                        }
+                    }
+                }
+        ) {
             val center = Offset(size.width / 2f, size.height / 2f)
             val maxRadius = (size.minDimension / 2f) * 0.9f
 
@@ -115,7 +170,7 @@ fun RadarScannerCanvas(
 
             // Outer Frame Ring
             drawCircle(
-                color = primaryColor,
+                color = if (isLiberating) Color(0xFF00FFCC) else primaryColor,
                 radius = maxRadius,
                 center = center,
                 style = Stroke(width = 3.dp.toPx())
@@ -134,13 +189,12 @@ fun RadarScannerCanvas(
             drawContext.canvas.nativeCanvas.drawText("W", center.x - maxRadius + 24f, center.y + 10f, paint)
 
             // Rotating Sweep Cone
-            if (isScanning) {
+            if (isScanning && !isLiberating) {
                 val sweepAngleDegrees = rotationAnim.value
                 val sweepRad = Math.toRadians(sweepAngleDegrees.toDouble())
 
                 val sweepPath = Path().apply {
                     moveTo(center.x, center.y)
-                    val coneAngleRad = Math.toRadians(45.0)
                     arcTo(
                         rect = androidx.compose.ui.geometry.Rect(
                             center.x - maxRadius,
@@ -180,7 +234,46 @@ fun RadarScannerCanvas(
                 )
             }
 
-            // Draw Detected Target Blips
+            // Expanding Liberation Burst Wave when freeing spirits
+            if (isLiberating || liberationWaveAnim.value > 0f) {
+                val waveProgress = liberationWaveAnim.value
+                val waveRadius = maxRadius * waveProgress * 1.4f
+                val waveAlpha = (1f - waveProgress).coerceIn(0f, 1f)
+
+                // Glowing Cyan/Golden Liberation Ring
+                drawCircle(
+                    color = Color(0xFF00FFCC).copy(alpha = waveAlpha * 0.8f),
+                    radius = waveRadius,
+                    center = center,
+                    style = Stroke(width = 6.dp.toPx())
+                )
+
+                drawCircle(
+                    color = Color.White.copy(alpha = waveAlpha * 0.4f),
+                    radius = waveRadius * 0.85f,
+                    center = center,
+                    style = Stroke(width = 3.dp.toPx())
+                )
+
+                // Radiating Peace Rays ("Befreiungs-Lichtstrahlen")
+                val rays = 12
+                for (r in 0 until rays) {
+                    val rayAngle = Math.toRadians((r * (360.0 / rays)))
+                    val rx1 = center.x + (waveRadius * 0.3f) * cos(rayAngle).toFloat()
+                    val ry1 = center.y + (waveRadius * 0.3f) * sin(rayAngle).toFloat()
+                    val rx2 = center.x + waveRadius * cos(rayAngle).toFloat()
+                    val ry2 = center.y + waveRadius * sin(rayAngle).toFloat()
+
+                    drawLine(
+                        color = Color(0xFFE0FFFF).copy(alpha = waveAlpha * 0.6f),
+                        start = Offset(rx1, ry1),
+                        end = Offset(rx2, ry2),
+                        strokeWidth = 2.dp.toPx()
+                    )
+                }
+            }
+
+            // Draw Detected Target Blips with "BEFREIEN" aura
             blips.forEach { blip ->
                 val blipRad = Math.toRadians(blip.angleDegrees.toDouble())
                 val distance = maxRadius * blip.distanceRatio.coerceIn(0.15f, 0.85f)
@@ -188,25 +281,74 @@ fun RadarScannerCanvas(
                 val by = center.y + distance * sin(blipRad).toFloat()
                 val blipCenter = Offset(bx, by)
 
-                val blipColor = if (blip.dangerLevel >= 4) AlertInfraRed else blip.color
+                val isRedThreat = blip.dangerLevel >= 4
+                val blipColor = when (blip.category) {
+                    EntityCategory.DEMON -> Color(0xFFFF0033)
+                    EntityCategory.VAMPIRE -> Color(0xFFDD00FF)
+                    EntityCategory.DIMENSION_RIFT -> Color(0xFF00E5FF)
+                    EntityCategory.GHOST -> if (isRedThreat) Color(0xFFFF2222) else blip.color
+                }
+
+                if (isRedThreat || blip.category == EntityCategory.DEMON || blip.category == EntityCategory.VAMPIRE || blip.category == EntityCategory.DIMENSION_RIFT) {
+                    // Pulsing Threat / Portal Target Lock Ring
+                    val ringColor = when (blip.category) {
+                        EntityCategory.DEMON -> Color(0xFFFF0033).copy(alpha = 0.6f)
+                        EntityCategory.VAMPIRE -> Color(0xFFDD00FF).copy(alpha = 0.6f)
+                        EntityCategory.DIMENSION_RIFT -> Color(0xFF00E5FF).copy(alpha = 0.7f)
+                        else -> Color(0xFFFF2222).copy(alpha = 0.5f)
+                    }
+                    drawCircle(
+                        color = ringColor,
+                        radius = 24.dp.toPx(),
+                        center = blipCenter,
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+                }
 
                 // Glowing Halo
                 drawCircle(
-                    color = blipColor.copy(alpha = 0.35f),
-                    radius = 16.dp.toPx(),
+                    color = blipColor.copy(alpha = 0.4f),
+                    radius = 18.dp.toPx(),
                     center = blipCenter
                 )
                 // Core Blip
                 drawCircle(
                     color = blipColor,
-                    radius = 6.dp.toPx(),
+                    radius = 8.dp.toPx(),
                     center = blipCenter
                 )
                 // Inner White Pulse
                 drawCircle(
                     color = Color.White,
-                    radius = 2.5.dp.toPx(),
+                    radius = 3.5.dp.toPx(),
                     center = blipCenter
+                )
+
+                // Action label
+                val blipLabelPaint = android.graphics.Paint().apply {
+                    color = when (blip.category) {
+                        EntityCategory.DEMON -> android.graphics.Color.RED
+                        EntityCategory.VAMPIRE -> android.graphics.Color.MAGENTA
+                        EntityCategory.DIMENSION_RIFT -> android.graphics.Color.CYAN
+                        EntityCategory.GHOST -> if (isRedThreat) android.graphics.Color.RED else android.graphics.Color.GREEN
+                    }
+                    textSize = 22f
+                    isAntiAlias = true
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    typeface = android.graphics.Typeface.MONOSPACE
+                    isFakeBoldText = true
+                }
+                val labelText = when (blip.category) {
+                    EntityCategory.DEMON -> "🔴 DÄMON FANGEN"
+                    EntityCategory.VAMPIRE -> "🟣 VAMPIR FANGEN"
+                    EntityCategory.DIMENSION_RIFT -> "🌀 PORTAL SCHLIESSEN"
+                    EntityCategory.GHOST -> if (isRedThreat) "🔴 ROT BEFREIEN" else "✨ BEFREIEN"
+                }
+                drawContext.canvas.nativeCanvas.drawText(
+                    labelText,
+                    bx,
+                    by + 30.dp.toPx(),
+                    blipLabelPaint
                 )
             }
         }

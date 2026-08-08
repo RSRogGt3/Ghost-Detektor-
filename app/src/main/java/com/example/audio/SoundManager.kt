@@ -69,6 +69,30 @@ class SoundManager {
     }
 
     /**
+     * Plays short radio static burst for real-time Spirit Box frequency sweep noise.
+     */
+    fun playRadioStaticSweep() {
+        if (isMuted) return
+        scope.launch {
+            try {
+                val sampleRate = 16000
+                val durationMs = 45
+                val numSamples = (sampleRate * (durationMs / 1000.0)).toInt()
+                val buffer = ByteArray(2 * numSamples)
+                var idx = 0
+                for (i in 0 until numSamples) {
+                    // White noise with envelope
+                    val noise = (Random.nextFloat() * 2f - 1f) * 0.25f
+                    val sampleVal = (noise * 32767).toInt().coerceIn(-32767, 32767).toShort()
+                    buffer[idx++] = (sampleVal.toInt() and 0x00ff).toByte()
+                    buffer[idx++] = (sampleVal.toInt() and 0xff00 ushr 8).toByte()
+                }
+                playPcmTrack(buffer, sampleRate, durationMs.toLong())
+            } catch (_: Exception) {}
+        }
+    }
+
+    /**
      * Checks EMF spike threshold and periodically triggers eerie, ambient ghost-hunting sound effects.
      */
     fun checkAndPlayEerieSpikeSound(emfLevel: Float, threshold: Float = 6.5f) {

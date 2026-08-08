@@ -11,11 +11,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.animateContentSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
@@ -53,6 +63,7 @@ fun GhostFrequencyChart(
     }
 
     val maxCount = remember(hourCounts) { hourCounts.maxOrNull()?.coerceAtLeast(1) ?: 1 }
+    var isMinimized by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -61,25 +72,47 @@ fun GhostFrequencyChart(
             .background(InfraGreenSurface)
             .border(1.dp, InfraGreenBorder, RoundedCornerShape(10.dp))
             .padding(14.dp)
+            .animateContentSize()
     ) {
-        Text(
-            text = "AKTIVITÄT ÜBER DEN TAG",
-            style = MaterialTheme.typography.labelMedium.copy(
-                color = InfraGreenTextPrimary,
-                fontFamily = FontFamily.Monospace,
-                fontWeight = FontWeight.Bold
-            )
-        )
-        Text(
-            text = "Statistische Häufigkeit der Geister-Ereignisse nach Uhrzeit",
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = InfraGreenTextMuted,
-                fontFamily = FontFamily.Monospace,
-                fontSize = 11.sp
-            )
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "AKTIVITÄT ÜBER DEN TAG",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        color = InfraGreenTextPrimary,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                Text(
+                    text = "Statistische Häufigkeit der Geister-Ereignisse nach Uhrzeit",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = InfraGreenTextMuted,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 11.sp
+                    )
+                )
+            }
+
+            IconButton(
+                onClick = { isMinimized = !isMinimized },
+                modifier = Modifier.size(28.dp)
+            ) {
+                Icon(
+                    imageVector = if (isMinimized) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                    contentDescription = if (isMinimized) "Ausklappen" else "Minimieren",
+                    tint = InfraGreenPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
         
-        Spacer(modifier = Modifier.height(16.dp))
+        if (!isMinimized) {
+            Spacer(modifier = Modifier.height(16.dp))
 
         Box(modifier = Modifier.fillMaxWidth().height(120.dp)) {
             Canvas(modifier = Modifier.fillMaxWidth().height(120.dp)) {
@@ -128,6 +161,7 @@ fun GhostFrequencyChart(
             Text("12:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
             Text("18:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
             Text("23:59", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
+        }
         }
     }
 }

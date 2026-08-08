@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -56,26 +57,35 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.example.data.CameraAnomaly
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
 import com.example.ui.theme.InfraGreenTextMuted
 import com.example.ui.theme.InfraGreenTextPrimary
+import com.example.util.CameraFrameAnalyzer
 
 /**
  * CameraBackgroundView renders a live CameraX feed in the background
- * with a digital "Infra-Grün" (Night-Vision / Infra-Green) color matrix filter overlay.
+ * with real-time frame image analysis for anomaly detection and digital spectral color matrix filter overlays.
  */
 @Composable
 fun CameraBackgroundView(
     modifier: Modifier = Modifier,
     primaryColor: Color = InfraGreenPrimary,
+    filterMode: FilterMode = FilterMode.INFRA_GREEN,
     overlayAlpha: Float = 0.65f,
+    filterIntensity: Float = 0.70f,
     isEnabled: Boolean = true,
-    imageCapture: androidx.camera.core.ImageCapture? = null
+    isFlashlightEnabled: Boolean = false,
+    imageCapture: androidx.camera.core.ImageCapture? = null,
+    onAnomaliesDetected: (anomalies: List<CameraAnomaly>, avgLuminance: Float) -> Unit = { _, _ -> }
 ) {
-    val context = LocalContext.current
+    val baseContext = LocalContext.current
+    val context = baseContext
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    var boundCamera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
 
     var hasCameraPermission by remember {
         mutableStateOf(
@@ -98,72 +108,138 @@ fun CameraBackgroundView(
         }
     }
 
+    // Toggle hardware torch / camera flashlight on camera control
+    LaunchedEffect(boundCamera, isFlashlightEnabled) {
+        val cam = boundCamera
+        if (cam != null) {
+            try {
+                if (cam.cameraInfo.hasFlashUnit()) {
+                    cam.cameraControl.enableTorch(isFlashlightEnabled)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Cleanup camera when isEnabled becomes false or when composable leaves composition
+    DisposableEffect(lifecycleOwner, isEnabled, hasCameraPermission) {
+        onDispose {
+            try {
+                val providerFuture = ProcessCameraProvider.getInstance(context.applicationContext)
+                if (providerFuture.isDone) {
+                    providerFuture.get().unbindAll()
+                } else {
+                    providerFuture.addListener({
+                        try {
+                            providerFuture.get().unbindAll()
+                        } catch (_: Exception) {}
+                    }, ContextCompat.getMainExecutor(context))
+                }
+            } catch (_: Exception) {}
+            boundCamera = null
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         if (isEnabled && hasCameraPermission) {
-            // Live Camera Feed View with CameraX
-            DisposableEffect(lifecycleOwner) {
-                onDispose {
-                    try {
-                        ProcessCameraProvider.getInstance(context).get().unbindAll()
-                    } catch (_: Exception) {}
+            NightVisionShaderOverlay(
+                isActive = true,
+                gainLevelDb = 12f + filterIntensity * 8f,
+                filterMode = filterMode,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AndroidView(
+                        factory = { ctx ->
+                            val previewView = PreviewView(ctx).apply {
+                                scaleType = PreviewView.ScaleType.FILL_CENTER
+                            }
+                            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx.applicationContext)
+
+                            cameraProviderFuture.addListener({
+                                try {
+                                    val cameraProvider = cameraProviderFuture.get()
+                                    val preview = Preview.Builder().build().also {
+                                        it.setSurfaceProvider(previewView.surfaceProvider)
+                                    }
+
+                                    val imageAnalysis = ImageAnalysis.Builder()
+                                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                        .build()
+                                        .also { analysis ->
+                                            analysis.setAnalyzer(
+                                                ContextCompat.getMainExecutor(ctx),
+                                                CameraFrameAnalyzer { anomalies, avgLum ->
+                                                    onAnomaliesDetected(anomalies, avgLum)
+                                                }
+                                            )
+                                        }
+
+                                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
+                                    cameraProvider.unbindAll()
+                                    boundCamera = if (imageCapture != null) {
+                                        cameraProvider.bindToLifecycle(
+                                            lifecycleOwner,
+                                            cameraSelector,
+                                            preview,
+                                            imageAnalysis,
+                                            imageCapture
+                                        )
+                                    } else {
+                                        cameraProvider.bindToLifecycle(
+                                            lifecycleOwner,
+                                            cameraSelector,
+                                            preview,
+                                            imageAnalysis
+                                        )
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }, ContextCompat.getMainExecutor(ctx))
+
+                            previewView
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+
+                    // Spectral Color Base Wash tailored to active FilterMode
+                    val baseSpectralWash = when (filterMode) {
+                        FilterMode.INFRA_GREEN -> Color(0xFF002208)
+                        FilterMode.THERMAL_RED -> Color(0xFF2B0A00)
+                        FilterMode.QUANTUM_MATRIX -> Color(0xFF001F2B)
+                        FilterMode.ULTRAVIOLET -> Color(0xFF1C002B)
+                        FilterMode.INFRA_YELLOW -> Color(0xFF2B2200)
+                        FilterMode.INFRA_BLUE -> Color(0xFF001B2B)
+                        FilterMode.INFRARED -> Color(0xFF2B0000)
+                    }
+
+                    // 1. Monochromatic spectral color wash
+                    val computedWashAlpha = (overlayAlpha * (0.25f + filterIntensity * 0.65f)).coerceIn(0.05f, 0.90f)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(baseSpectralWash.copy(alpha = computedWashAlpha))
+                    )
+
+                    // 2. High-contrast thermal spectral glow blend layer
+                    val computedGlowAlpha = (0.05f + filterIntensity * 0.25f).coerceIn(0.02f, 0.75f)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(primaryColor.copy(alpha = computedGlowAlpha))
+                    )
+
+                    // 3. Focused Tactical Flashlight Beam Overlay
+                    FlashlightConeOverlay(
+                        isFlashlightActive = isFlashlightEnabled,
+                        primaryColor = primaryColor,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
-
-            AndroidView(
-                factory = { ctx ->
-                    val previewView = PreviewView(ctx).apply {
-                        scaleType = PreviewView.ScaleType.FILL_CENTER
-                    }
-                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-
-                    cameraProviderFuture.addListener({
-                        try {
-                            val cameraProvider = cameraProviderFuture.get()
-                            val preview = Preview.Builder().build().also {
-                                it.setSurfaceProvider(previewView.surfaceProvider)
-                            }
-
-                            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
-
-                            cameraProvider.unbindAll()
-                            if (imageCapture != null) {
-                                cameraProvider.bindToLifecycle(
-                                    lifecycleOwner,
-                                    cameraSelector,
-                                    preview,
-                                    imageCapture
-                                )
-                            } else {
-                                cameraProvider.bindToLifecycle(
-                                    lifecycleOwner,
-                                    cameraSelector,
-                                    preview
-                                )
-                            }
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                        }
-                    }, ContextCompat.getMainExecutor(ctx))
-
-                    previewView
-                },
-                modifier = Modifier.fillMaxSize()
-            )
-
-            // "Infra-Grün" (Infra-Green) Night Vision Digital Filter Overlays
-            // 1. Monochromatic green spectral color wash
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFF002208).copy(alpha = overlayAlpha))
-            )
-
-            // 2. High-contrast thermal green glow blend layer
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(primaryColor.copy(alpha = 0.22f))
-            )
         } else {
             // Dark atmospheric fallback when camera is disabled or permission denied
             Box(

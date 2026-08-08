@@ -17,30 +17,59 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.abs
 import kotlin.math.sqrt
 
-class GhostSensorManager(context: Context) : SensorEventListener {
+class GhostSensorManager(private val context: Context) : SensorEventListener {
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
 
+    // Hardware Sensors
     private val accelerometer: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val magnetometer: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+    private val gyroscope: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    private val lightSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_LIGHT)
+    private val pressureSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_PRESSURE)
+    private val proximitySensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_PROXIMITY)
+    private val tempSensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_AMBIENT_TEMPERATURE)
+    private val humiditySensor: Sensor? = sensorManager?.getDefaultSensor(Sensor.TYPE_RELATIVE_HUMIDITY)
 
     private val gravityValues = FloatArray(3)
     private val magneticValues = FloatArray(3)
     private var hasGravity = false
     private var hasMagnetic = false
 
+    // StateFlows for Sensor Telemetry
     private val _sensorEmfStrength = MutableStateFlow(2.5f)
     val sensorEmfStrength: StateFlow<Float> = _sensorEmfStrength.asStateFlow()
 
     private val _motionIntensity = MutableStateFlow(0f)
     val motionIntensity: StateFlow<Float> = _motionIntensity.asStateFlow()
 
+    private val _gyroSpeed = MutableStateFlow(0f)
+    val gyroSpeed: StateFlow<Float> = _gyroSpeed.asStateFlow()
+
+    private val _lightLux = MutableStateFlow(150f)
+    val lightLux: StateFlow<Float> = _lightLux.asStateFlow()
+
+    private val _pressureHpa = MutableStateFlow(1013.25f)
+    val pressureHpa: StateFlow<Float> = _pressureHpa.asStateFlow()
+
+    private val _proximityCm = MutableStateFlow(5f)
+    val proximityCm: StateFlow<Float> = _proximityCm.asStateFlow()
+
+    private val _ambientTempC = MutableStateFlow(21.5f)
+    val ambientTempC: StateFlow<Float> = _ambientTempC.asStateFlow()
+
     private val _compassAzimuth = MutableStateFlow(0f)
     val compassAzimuth: StateFlow<Float> = _compassAzimuth.asStateFlow()
 
     private val _isSensorActive = MutableStateFlow(false)
     val isSensorActive: StateFlow<Boolean> = _isSensorActive.asStateFlow()
+
+    private val _activeSensorCount = MutableStateFlow(0)
+    val activeSensorCount: StateFlow<Int> = _activeSensorCount.asStateFlow()
+
+    private val _activeSensorNames = MutableStateFlow<List<String>>(emptyList())
+    val activeSensorNames: StateFlow<List<String>> = _activeSensorNames.asStateFlow()
 
     // Satellite Support States
     private val _satelliteCount = MutableStateFlow(0)
@@ -51,13 +80,24 @@ class GhostSensorManager(context: Context) : SensorEventListener {
 
     private var lastAccelMagnitude = 9.81f
     private var isListening = false
+    private var isBatterySaverActive = false
     private val applicationContext = context.applicationContext
+
+    fun setBatterySaverMode(enabled: Boolean) {
+        if (isBatterySaverActive == enabled) return
+        isBatterySaverActive = enabled
+        if (isListening) {
+            stopListening()
+            startListening()
+        }
+    }
+
+    val isBatterySaverModeActive: Boolean get() = isBatterySaverActive
 
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
             _currentLocation.value = location
-            // Simulate satellite count fluctuating based on accuracy
-            val simulatedSats = (12 - (location.accuracy / 10).coerceIn(0f, 10f)).toInt().coerceAtLeast(3)
+            val simulatedSats = (14 - (location.accuracy / 8).coerceIn(0f, 10f)).toInt().coerceAtLeast(4)
             _satelliteCount.value = simulatedSats
         }
         override fun onProviderEnabled(provider: String) {}
@@ -66,16 +106,66 @@ class GhostSensorManager(context: Context) : SensorEventListener {
 
     fun startListening() {
         if (isListening) return
-        var registeredAny = false
+        var count = 0
+        val names = mutableListOf<String>()
+
+        val sensorDelay = if (isBatterySaverActive) SensorManager.SENSOR_DELAY_NORMAL else SensorManager.SENSOR_DELAY_UI
+        val gpsInterval = if (isBatterySaverActive) 15000L else 4000L
 
         accelerometer?.let {
-            sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-            registeredAny = true
+            if (sensorManager?.registerListener(this, it, sensorDelay) == true) {
+                count++
+                names.add("ACCEL")
+            }
         }
 
         magnetometer?.let {
-            sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
-            registeredAny = true
+            if (sensorManager?.registerListener(this, it, sensorDelay) == true) {
+                count++
+                names.add("MAGNET")
+            }
+        }
+
+        gyroscope?.let {
+            if (sensorManager?.registerListener(this, it, sensorDelay) == true) {
+                count++
+                names.add("GYRO")
+            }
+        }
+
+        lightSensor?.let {
+            if (sensorManager?.registerListener(this, it, sensorDelay) == true) {
+                count++
+                names.add("LUX")
+            }
+        }
+
+        pressureSensor?.let {
+            if (sensorManager?.registerListener(this, it, sensorDelay) == true) {
+                count++
+                names.add("BARO")
+            }
+        }
+
+        proximitySensor?.let {
+            if (sensorManager?.registerListener(this, it, sensorDelay) == true) {
+                count++
+                names.add("PROX")
+            }
+        }
+
+        tempSensor?.let {
+            if (sensorManager?.registerListener(this, it, sensorDelay) == true) {
+                count++
+                names.add("TEMP")
+            }
+        }
+
+        humiditySensor?.let {
+            if (sensorManager?.registerListener(this, it, sensorDelay) == true) {
+                count++
+                names.add("HUMID")
+            }
         }
         
         try {
@@ -83,23 +173,24 @@ class GhostSensorManager(context: Context) : SensorEventListener {
                 ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 locationManager?.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
-                    5000L,
+                    gpsInterval,
                     1f,
                     locationListener
                 )
                 locationManager?.requestLocationUpdates(
                     LocationManager.NETWORK_PROVIDER,
-                    5000L,
+                    gpsInterval,
                     1f,
                     locationListener
                 )
+                names.add("GPS")
             }
-        } catch (e: Exception) {
-            // Location access denied or unavailable
-        }
+        } catch (_: Exception) {}
 
-        _isSensorActive.value = registeredAny
-        isListening = registeredAny
+        _activeSensorCount.value = count
+        _activeSensorNames.value = names
+        _isSensorActive.value = count > 0
+        isListening = count > 0
     }
 
     fun stopListening() {
@@ -107,9 +198,7 @@ class GhostSensorManager(context: Context) : SensorEventListener {
         sensorManager?.unregisterListener(this)
         try {
             locationManager?.removeUpdates(locationListener)
-        } catch (e: Exception) {
-            // Ignored
-        }
+        } catch (_: Exception) {}
         _isSensorActive.value = false
         isListening = false
     }
@@ -119,22 +208,20 @@ class GhostSensorManager(context: Context) : SensorEventListener {
 
         when (event.sensor.type) {
             Sensor.TYPE_MAGNETIC_FIELD -> {
-                System.arraycopy(event.values, 0, magneticValues, 0, event.values.size)
+                System.arraycopy(event.values, 0, magneticValues, 0, minOf(event.values.size, 3))
                 hasMagnetic = true
 
                 val x = event.values[0]
                 val y = event.values[1]
                 val z = event.values[2]
-                val magTesla = sqrt(x * x + y * y + z * z) // Total magnetic magnitude in uT
+                val magTesla = sqrt(x * x + y * y + z * z)
                 
-                // Earth's magnetic field is typically 25 to 65 uT. Map to EMF level scale (1.0 to 9.9 mG)
-                // Normalize and add variation
                 val calculatedEmf = (magTesla / 10f).coerceIn(1.0f, 9.9f)
                 _sensorEmfStrength.value = calculatedEmf
             }
 
             Sensor.TYPE_ACCELEROMETER -> {
-                System.arraycopy(event.values, 0, gravityValues, 0, event.values.size)
+                System.arraycopy(event.values, 0, gravityValues, 0, minOf(event.values.size, 3))
                 hasGravity = true
 
                 val ax = event.values[0]
@@ -145,14 +232,36 @@ class GhostSensorManager(context: Context) : SensorEventListener {
                 val deltaAccel = abs(currentAccel - lastAccelMagnitude)
                 lastAccelMagnitude = currentAccel
 
-                // Motion intensity drives extra fluctuations when shaking/moving device
                 _motionIntensity.value = deltaAccel.coerceIn(0f, 10f)
 
-                // If magnetometer is unavailable or returning static values, accelerometer motion influences EMF reading directly
                 if (magnetometer == null) {
                     val motionEmf = (2.0f + deltaAccel * 1.5f).coerceIn(1.0f, 9.9f)
                     _sensorEmfStrength.value = motionEmf
                 }
+            }
+
+            Sensor.TYPE_GYROSCOPE -> {
+                val gx = event.values[0]
+                val gy = event.values[1]
+                val gz = event.values[2]
+                val gyroMag = sqrt(gx * gx + gy * gy + gz * gz)
+                _gyroSpeed.value = gyroMag
+            }
+
+            Sensor.TYPE_LIGHT -> {
+                _lightLux.value = event.values[0]
+            }
+
+            Sensor.TYPE_PRESSURE -> {
+                _pressureHpa.value = event.values[0]
+            }
+
+            Sensor.TYPE_PROXIMITY -> {
+                _proximityCm.value = event.values[0]
+            }
+
+            Sensor.TYPE_AMBIENT_TEMPERATURE -> {
+                _ambientTempC.value = event.values[0]
             }
         }
 
@@ -162,17 +271,14 @@ class GhostSensorManager(context: Context) : SensorEventListener {
             if (SensorManager.getRotationMatrix(rMatrix, iMatrix, gravityValues, magneticValues)) {
                 val orientation = FloatArray(3)
                 SensorManager.getOrientation(rMatrix, orientation)
-                // Azimuth in radians
                 val azimuthInRadians = orientation[0]
                 val azimuthInDegrees = Math.toDegrees(azimuthInRadians.toDouble()).toFloat()
-                // Convert to 0-360
                 val azimuth = (azimuthInDegrees + 360f) % 360f
                 _compassAzimuth.value = azimuth
             }
         }
     }
 
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // No-op for ghost scanner
-    }
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 }
+

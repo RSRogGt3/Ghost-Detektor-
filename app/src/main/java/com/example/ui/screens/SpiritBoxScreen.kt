@@ -90,6 +90,8 @@ fun SpiritBoxScreen(
 
     val micAmplitude by viewModel.microphoneAnalyzer.amplitude.collectAsStateWithLifecycle()
     val isMicListening by viewModel.microphoneAnalyzer.isListening.collectAsStateWithLifecycle()
+    val isRealtimeSweepActive by viewModel.isRealtimeSweepActive.collectAsStateWithLifecycle()
+    val realtimeSweepSpeedMs by viewModel.realtimeSweepSpeedMs.collectAsStateWithLifecycle()
 
     val currentEmf by viewModel.emfLevel.collectAsStateWithLifecycle()
     val currentDanger by viewModel.dangerLevel.collectAsStateWithLifecycle()
@@ -127,6 +129,9 @@ fun SpiritBoxScreen(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasMicPermission = granted
+        if (granted) {
+            viewModel.toggleMicListening()
+        }
     }
 
     val questionPresets = UiStrings.getPresetQuestions(appLanguage)
@@ -282,12 +287,120 @@ fun SpiritBoxScreen(
                     }
 
                     AudioWaveformCanvas(
-                        isActive = isSpeaking || isGenerating,
+                        isActive = true,
+                        isScanning = isMicListening || autoSpiritBoxEnabled || isGenerating || isSpeaking,
                         isGenerating = isGenerating,
+                        isSpeaking = isSpeaking,
                         liveMicAmplitude = micAmplitude,
+                        frequencyKhz = currentFreq,
+                        emfLevel = currentEmf,
                         waveColor = InfraGreenPrimary,
-                        amplitudeMultiplier = if (isSpeaking || isGenerating) 1.6f else 0.5f
+                        amplitudeMultiplier = if (isSpeaking || isGenerating) 1.6f else 0.8f
                     )
+                }
+            }
+
+            // Real-Time Radio Frequency Sweep Control Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth().testTag("realtime_sweep_card")
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = null,
+                                tint = if (isRealtimeSweepActive) InfraGreenPrimary else InfraGreenTextMuted,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "ECHTZEIT RADIO-SWEEP (FM/AM)",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = InfraGreenPrimary,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                Text(
+                                    text = "${String.format(java.util.Locale.US, "%.1f", currentFreq)} MHz • Rauschen: ${realtimeSweepSpeedMs}ms",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = InfraGreenTextMuted,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = { viewModel.toggleRealtimeSweep() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isRealtimeSweepActive) InfraGreenPrimary else InfraGreenSurfaceVariant
+                            ),
+                            shape = RoundedCornerShape(6.dp)
+                        ) {
+                            Text(
+                                text = if (isRealtimeSweepActive) "SWEEP: AN" else "SWEEP: AUS",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isRealtimeSweepActive) Color.Black else InfraGreenTextPrimary,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+
+                    if (isRealtimeSweepActive) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = "SWEEP-GESCHWINDIGKEIT:",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = InfraGreenTextMuted,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp
+                                )
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(100L to "100ms", 200L to "200ms", 350L to "350ms", 500L to "500ms").forEach { (speed, label) ->
+                                    val isSelected = realtimeSweepSpeedMs == speed
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isSelected) InfraGreenPrimary else InfraGreenSurfaceVariant)
+                                            .border(1.dp, if (isSelected) InfraGreenPrimary else InfraGreenBorder, RoundedCornerShape(6.dp))
+                                            .clickable { viewModel.setRealtimeSweepSpeed(speed) }
+                                            .padding(vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color = if (isSelected) Color.Black else InfraGreenTextPrimary,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -325,14 +438,20 @@ fun SpiritBoxScreen(
                         }
 
                         Button(
-                            onClick = { viewModel.toggleMicListening() },
+                            onClick = {
+                                if (hasMicPermission) {
+                                    viewModel.toggleMicListening()
+                                } else {
+                                    launcher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isMicListening) InfraGreenPrimary else InfraGreenSurfaceVariant
                             ),
                             shape = RoundedCornerShape(6.dp)
                         ) {
                             Text(
-                                text = if (isMicListening) "MIKROFON: AN" else "MIKROFON: AUS",
+                                text = if (!hasMicPermission) "FREIGEBEN" else if (isMicListening) "MIKROFON: AN" else "MIKROFON: AUS",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     color = if (isMicListening) Color.Black else InfraGreenTextPrimary,
                                     fontFamily = FontFamily.Monospace,

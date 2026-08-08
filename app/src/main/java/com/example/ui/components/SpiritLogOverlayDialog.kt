@@ -1,21 +1,26 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,7 +38,9 @@ fun SpiritLogOverlayDialog(
     onClearLogs: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    val context = LocalContext.current
     val dateFormat = remember { SimpleDateFormat("HH:mm:ss · dd.MM.yyyy", Locale.getDefault()) }
+    val listState = rememberLazyListState()
 
     val filteredLogs = remember(logs, searchQuery) {
         if (searchQuery.isBlank()) logs
@@ -47,7 +54,7 @@ fun SpiritLogOverlayDialog(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.85f)
+                .fillMaxHeight(0.88f)
                 .clip(RoundedCornerShape(16.dp))
                 .border(1.5.dp, InfraGreenPrimary, RoundedCornerShape(16.dp)),
             color = Color(0xFF070C09)
@@ -125,7 +132,7 @@ fun SpiritLogOverlayDialog(
                     )
                 )
 
-                // Logs list or Empty State
+                // Logs list or Empty State with Visible Scrollbar
                 if (filteredLogs.isEmpty()) {
                     Box(
                         modifier = Modifier
@@ -144,97 +151,113 @@ fun SpiritLogOverlayDialog(
                         )
                     }
                 } else {
-                    LazyColumn(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                            .weight(1f)
                     ) {
-                        items(filteredLogs, key = { it.id }) { entry ->
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                                border = CardDefaults.outlinedCardBorder(enabled = true),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(filteredLogs, key = { it.id }) { entry ->
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                                    border = CardDefaults.outlinedCardBorder(enabled = true),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    // Timestamp & EMF Badge
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
+                                        // Timestamp & EMF Badge
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = dateFormat.format(Date(entry.timestamp)),
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    color = InfraGreenTextMuted,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontSize = 10.sp
+                                                )
+                                            )
+
+                                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Surface(
+                                                    color = InfraGreenSurfaceVariant,
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "EMF: ${String.format(Locale.US, "%.1f", entry.emfLevel)} mG",
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                        style = MaterialTheme.typography.labelSmall.copy(
+                                                            color = InfraGreenPrimary,
+                                                            fontFamily = FontFamily.Monospace,
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    )
+                                                }
+
+                                                Surface(
+                                                    color = if (entry.dangerLevel > 2) AlertInfraRed.copy(alpha = 0.2f) else InfraGreenSurfaceVariant,
+                                                    shape = RoundedCornerShape(4.dp)
+                                                ) {
+                                                    Text(
+                                                        text = "GEFAHR: ${entry.dangerLevel}",
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                        style = MaterialTheme.typography.labelSmall.copy(
+                                                            color = if (entry.dangerLevel > 2) AlertInfraRed else InfraGreenPrimary,
+                                                            fontFamily = FontFamily.Monospace,
+                                                            fontSize = 10.sp,
+                                                            fontWeight = FontWeight.Bold
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // Question asked
                                         Text(
-                                            text = dateFormat.format(Date(entry.timestamp)),
-                                            style = MaterialTheme.typography.labelSmall.copy(
+                                            text = "Frage: \"${entry.question}\"",
+                                            style = MaterialTheme.typography.bodySmall.copy(
                                                 color = InfraGreenTextMuted,
                                                 fontFamily = FontFamily.Monospace,
-                                                fontSize = 10.sp
+                                                fontSize = 11.sp
                                             )
                                         )
 
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Surface(
-                                                color = InfraGreenSurfaceVariant,
-                                                shape = RoundedCornerShape(4.dp)
-                                            ) {
-                                                Text(
-                                                    text = "EMF: ${String.format(Locale.US, "%.1f", entry.emfLevel)} mG",
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                    style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = InfraGreenPrimary,
-                                                        fontFamily = FontFamily.Monospace,
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                )
-                                            }
-
-                                            Surface(
-                                                color = if (entry.dangerLevel > 2) AlertInfraRed.copy(alpha = 0.2f) else InfraGreenSurfaceVariant,
-                                                shape = RoundedCornerShape(4.dp)
-                                            ) {
-                                                Text(
-                                                    text = "GEFAHR: ${entry.dangerLevel}",
-                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                    style = MaterialTheme.typography.labelSmall.copy(
-                                                        color = if (entry.dangerLevel > 2) AlertInfraRed else InfraGreenPrimary,
-                                                        fontFamily = FontFamily.Monospace,
-                                                        fontSize = 10.sp,
-                                                        fontWeight = FontWeight.Bold
-                                                    )
-                                                )
-                                            }
-                                        }
+                                        // Phrase Response
+                                        Text(
+                                            text = "\"${entry.phrase}\"",
+                                            style = MaterialTheme.typography.bodyMedium.copy(
+                                                color = InfraGreenTextPrimary,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Medium,
+                                                fontSize = 13.sp
+                                            )
+                                        )
                                     }
-
-                                    // Question asked
-                                    Text(
-                                        text = "Frage: \"${entry.question}\"",
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            color = InfraGreenTextMuted,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = 11.sp
-                                        )
-                                    )
-
-                                    // Phrase Response
-                                    Text(
-                                        text = "\"${entry.phrase}\"",
-                                        style = MaterialTheme.typography.bodyMedium.copy(
-                                            color = InfraGreenTextPrimary,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Medium,
-                                            fontSize = 13.sp
-                                        )
-                                    )
                                 }
                             }
                         }
+
+                        // Visible Functional Neon Scrollbar
+                        Spacer(modifier = Modifier.width(6.dp))
+                        VerticalScrollbarForLazyList(
+                            state = listState,
+                            color = InfraGreenPrimary,
+                            trackColor = InfraGreenBorder,
+                            width = 6.dp
+                        )
                     }
                 }
 
@@ -244,25 +267,54 @@ fun SpiritLogOverlayDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(
-                        onClick = onClearLogs,
-                        enabled = logs.isNotEmpty()
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = null,
-                            tint = AlertInfraRed,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "LOG LEEREN",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = if (logs.isNotEmpty()) AlertInfraRed else InfraGreenTextMuted,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
+                        TextButton(
+                            onClick = onClearLogs,
+                            enabled = logs.isNotEmpty()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = AlertInfraRed,
+                                modifier = Modifier.size(16.dp)
                             )
-                        )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "LOG LEEREN",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = if (logs.isNotEmpty()) AlertInfraRed else InfraGreenTextMuted,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { exportAndShareSpiritTranscripts(context, filteredLogs) },
+                            enabled = filteredLogs.isNotEmpty(),
+                            border = BorderStroke(1.dp, if (filteredLogs.isNotEmpty()) InfraGreenPrimary else InfraGreenBorder),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = null,
+                                tint = if (filteredLogs.isNotEmpty()) InfraGreenPrimary else InfraGreenTextMuted,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "EXPORTIEREN",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = if (filteredLogs.isNotEmpty()) InfraGreenPrimary else InfraGreenTextMuted,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
                     }
 
                     Button(

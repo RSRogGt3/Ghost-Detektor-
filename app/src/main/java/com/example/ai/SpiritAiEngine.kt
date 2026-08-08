@@ -1,6 +1,7 @@
 package com.example.ai
 
 import com.example.BuildConfig
+import com.example.ui.i18n.AppLanguage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -11,28 +12,12 @@ import kotlin.random.Random
 
 class SpiritAiEngine {
 
-    // Procedural spirit responses for offline fallback
-    private val spiritResponses = listOf(
-        "Ich wache über diesen Ort seit langer Zeit...",
-        "Kälte umschließt deine Seele. Höre das Flüstern...",
-        "Warum störst du die Stille meines Schattens?",
-        "Ich war einst wie du... suchend im Dunkeln.",
-        "Verlass diesen Raum, ehe das Portal schwindet!",
-        "Die Frequenz verbindet unsere Welten für kurze Zeit.",
-        "Wir sind viele. Wir beobachten jeden deiner Schritte.",
-        "Ein altes Versprechen hält mich hier gefangen.",
-        "Spürst du den Temperatursturz in deiner Nähe?",
-        "Ich suche das verlorene Licht... hast du es gesehen?",
-        "Keine Furcht. Ich bringe nur eine Botschaft aus dem Äther.",
-        "Das Infrarotlicht enthüllt meine wahre Gestalt.",
-        "In den Schatten verborgen, warten wir auf Erlösung.",
-        "Die Wände atmen... hörst du den Herzschlag der Gruft?",
-        "Dein Blick trifft ins Leere, doch ich stehe direkt hinter dir.",
-        "Namenlos und vergessen wandere ich durch diese Hallen.",
-        "Ein eisiger Hauch streift deine Wange... Erleuchtung nah."
-    )
-
-    suspend fun generateSpiritResponse(question: String, ghostType: String, emfLevel: Float): String {
+    suspend fun generateSpiritResponse(
+        question: String,
+        ghostType: String,
+        emfLevel: Float,
+        language: AppLanguage = AppLanguage.GERMAN
+    ): String {
         val apiKey = try {
             BuildConfig::class.java.getField("GEMINI_API_KEY").get(null) as? String ?: ""
         } catch (_: Exception) {
@@ -41,72 +26,159 @@ class SpiritAiEngine {
 
         if (apiKey.isNotBlank() && apiKey != "MY_GEMINI_API_KEY") {
             try {
-                return callGeminiApi(apiKey, question, ghostType, emfLevel)
+                return callGeminiApi(apiKey, question, ghostType, emfLevel, language)
             } catch (_: Exception) {
                 // Fall back to offline spirit engine
             }
         }
 
-        return generateOfflineSpiritResponse(question, ghostType)
+        return generateOfflineSpiritResponse(question, ghostType, language)
     }
 
     /**
      * Generiert kurze, gruselige Phrasen basierend auf den aktuellen Sensordaten
-     * (EMF-Stärke, Bewegung, Frequenz sweep & Gefahrenstufe).
+     * (EMF-Stärke, Bewegung, Frequenz sweep & Gefahrenstufe) in der gewählten Sprache.
      */
     fun generateSensorDrivenPhrase(
         emfLevel: Float,
         motion: Float,
         frequencyKhz: Float,
-        dangerLevel: Int
+        dangerLevel: Int,
+        language: AppLanguage = AppLanguage.GERMAN
     ): String {
-        val highEmfPhrases = listOf(
-            "Anomalie bei ${String.format(java.util.Locale.US, "%.1f", emfLevel)} Microgauss... Die Luft lädt sich auf!",
-            "Starker Magnetfluss! Ein Schatten durchbricht das Infrarotlicht...",
-            "Spürst du die Ladung? ${String.format(java.util.Locale.US, "%.1f", emfLevel)} mG... Wir ziehen Energie aus deiner Nähe.",
-            "Das Magnetfeld fluktuiert heftig... Eine Präsenzmanifestation steht bevor!",
-            "Warnung! Magnetische Spitze auf Frequenz ${String.format(java.util.Locale.US, "%.1f", frequencyKhz)} kHz!",
-            "Die magnetische Spannung zerreißt die Dimensionen!",
-            "Energiepegel kritisch! Die Entität speist sich aus dem EMF-Feld."
-        )
+        val formattedEmf = String.format(java.util.Locale.US, "%.1f", emfLevel)
+        val formattedFreq = String.format(java.util.Locale.US, "%.1f", frequencyKhz)
 
-        val highMotionPhrases = listOf(
-            "Erknackende Dielen... Du spürst meine Schritte im Raum.",
-            "Starke Bewegung registriert... Versuche nicht vor dem Schatten zu fliehen.",
-            "Die Vibration erschüttert das Siegel... Wir kommen näher.",
-            "Ein Hauch von Kälte streift deine Haut... Bleib stehen.",
-            "Der Boden zittert unter unsichtbaren Füßen...",
-            "Jede Erschütterung öffnet das Portal ein Stück weiter."
-        )
-
-        val highDangerPhrases = listOf(
-            "Gefahrenstufe $dangerLevel! Das Portal steht weit offen...",
-            "Das Wesen ist wütend... Meide die dunklen Ecken des Raumes!",
-            "Dein Herzschlag beschleunigt sich... Wir hören jeden Stoß.",
-            "Kritische Störung! Die Geistform erreicht volle Intensität.",
-            "Flieh solange du kannst! Die Dunkelheit ergreift Besitz von dir.",
-            "Kein Entkommen mehr... Die Jenseitsgrenze ist gefallen."
-        )
-
-        val subtlePhrases = listOf(
-            "Signal bei ${String.format(java.util.Locale.US, "%.1f", frequencyKhz)} Kilohertz... Wir lauschen deinen Worten.",
-            "Schwache paranormales Rauschen... Wer tritt in unser Reich?",
-            "Ein Flüstern durchbricht die statische Frequenz...",
-            "Wir wachen über diesen Korridor... Seit über hundert Jahren.",
-            "Das Instrument zeichnet unsere Stimmen auf... Hörst du es?",
-            "Im Äther schwingt eine ferne Erinnerung...",
-            "Sanftes Rauschen im Raum... Jemand atmet leise mit."
-        )
-
-        return when {
-            dangerLevel >= 4 -> highDangerPhrases.random()
-            emfLevel > 6.0f -> highEmfPhrases.random()
-            motion > 2.0f -> highMotionPhrases.random()
-            else -> subtlePhrases.random()
+        return when (language) {
+            AppLanguage.GERMAN -> {
+                val highEmfPhrases = listOf(
+                    "Anomalie bei $formattedEmf Microgauss... Die Luft lädt sich auf!",
+                    "Starker Magnetfluss! Ein Schatten durchbricht das Infrarotlicht...",
+                    "Spürst du die Ladung? $formattedEmf mG... Wir ziehen Energie aus deiner Nähe.",
+                    "Das Magnetfeld fluktuiert heftig... Eine Präsenzmanifestation steht bevor!",
+                    "Warnung! Magnetische Spitze auf Frequenz $formattedFreq kHz!",
+                    "Die magnetische Spannung zerreißt die Dimensionen!",
+                    "Energiepegel kritisch! Die Entität speist sich aus dem EMF-Feld."
+                )
+                val highMotionPhrases = listOf(
+                    "Erknackende Dielen... Du spürst meine Schritte im Raum.",
+                    "Starke Bewegung registriert... Versuche nicht vor dem Schatten zu fliehen.",
+                    "Die Vibration erschüttert das Siegel... Wir kommen näher.",
+                    "Ein Hauch von Kälte streift deine Haut... Bleib stehen.",
+                    "Der Boden zittert unter unsichtbaren Füßen...",
+                    "Jede Erschütterung öffnet das Portal ein Stück weiter."
+                )
+                val highDangerPhrases = listOf(
+                    "Gefahrenstufe $dangerLevel! Das Portal steht weit offen...",
+                    "Das Wesen ist wütend... Meide die dunklen Ecken des Raumes!",
+                    "Dein Herzschlag beschleunigt sich... Wir hören jeden Stoß.",
+                    "Kritische Störung! Die Geistform erreicht volle Intensität.",
+                    "Flieh solange du kannst! Die Dunkelheit ergreift Besitz von dir.",
+                    "Kein Entkommen mehr... Die Jenseitsgrenze ist gefallen."
+                )
+                val subtlePhrases = listOf(
+                    "Signal bei $formattedFreq Kilohertz... Wir lauschen deinen Worten.",
+                    "Schwaches paranormales Rauschen... Wer tritt in unser Reich?",
+                    "Ein Flüstern durchbricht die statische Frequenz...",
+                    "Wir wachen über diesen Korridor... Seit über hundert Jahren.",
+                    "Das Instrument zeichnet unsere Stimmen auf... Hörst du es?",
+                    "Im Äther schwingt eine ferne Erinnerung...",
+                    "Sanftes Rauschen im Raum... Jemand atmet leise mit."
+                )
+                when {
+                    dangerLevel >= 4 -> highDangerPhrases.random()
+                    emfLevel > 6.0f -> highEmfPhrases.random()
+                    motion > 2.0f -> highMotionPhrases.random()
+                    else -> subtlePhrases.random()
+                }
+            }
+            AppLanguage.ENGLISH -> {
+                val phrases = listOf(
+                    "Anomaly detected at $formattedEmf Microgauss... The air is charging!",
+                    "Strong magnetic field flux! A shadow breaks through the infrared light...",
+                    "Warning! Danger level $dangerLevel reached! The veil is thinning...",
+                    "Signal locked at $formattedFreq kHz... We hear your footsteps in the dark.",
+                    "The spirit energy feeds upon the electromagnetic field...",
+                    "Do not run... We have watched over this corridor for a century."
+                )
+                phrases.random()
+            }
+            AppLanguage.SPANISH -> {
+                val phrases = listOf(
+                    "Anomalía detectada a $formattedEmf microgauss... La presencia se acerca.",
+                    "¡Campo magnético fuerte! Una sombra cruza el espectro infrarrojo...",
+                    "¡Nivel de peligro $dangerLevel! La puerta dimensional se abre...",
+                    "Frecuencia fijada en $formattedFreq kHz... Escuchamos tu respiración.",
+                    "La energía espiritual se alimenta de tu miedo...",
+                    "No temas al frío... Hemos estado aquí durante siglos."
+                )
+                phrases.random()
+            }
+            AppLanguage.FRENCH -> {
+                val phrases = listOf(
+                    "Anomalie détectée à $formattedEmf Microgauss... L'air se charge en énergie!",
+                    "Flux magnétique intense! Une ombre traverse la lumière infrarouge...",
+                    "Alerte! Niveau de danger $dangerLevel! Le portail se détériore...",
+                    "Signal capté à $formattedFreq kHz... Nous écoutons vos murmures.",
+                    "L'esprit puise sa force dans le champ électromagnétique...",
+                    "Restez immobile... Notre présence entoure cette pièce."
+                )
+                phrases.random()
+            }
+            AppLanguage.TURKISH -> {
+                val phrases = listOf(
+                    "$formattedEmf Microgauss seviyesinde anormallik tespit edildi...",
+                    "Güçlü manyetik akı! Kızılötesi ışıkta bir gölge belirdi...",
+                    "Tehlike seviyesi $dangerLevel! Ruhani portal açılıyor...",
+                    "$formattedFreq kHz frekansında sinyal yakalandı... Sizi dinliyoruz.",
+                    "Ruh enerjisi manyetik alandan besleniyor...",
+                    "Korkmayın... Yüz yıldır bu odada bekliyoruz."
+                )
+                phrases.random()
+            }
+            AppLanguage.ITALIAN -> {
+                val phrases = listOf(
+                    "Anomalia rilevata a $formattedEmf Microgauss... L'aria si carica di energia!",
+                    "Forte flusso magnetico! Un'ombra attraversa la luce infrarossa...",
+                    "Livello di pericolo $dangerLevel! Il portale è spalancato...",
+                    "Frequenza agganciata a $formattedFreq kHz... Ascoltiamo i tuoi passi.",
+                    "L'entità trae forza dal campo elettromagnetico...",
+                    "Rimani calmo... Vegliamo su questa stanza da oltre un secolo."
+                )
+                phrases.random()
+            }
+            AppLanguage.POLISH -> {
+                val phrases = listOf(
+                    "Wykryto anomalię $formattedEmf Microgauss... Powietrze ładuje się energią!",
+                    "Silny strumień magnetyczny! Cień przełamuje światło podczerwone...",
+                    "Poziom zagrożenia $dangerLevel! Portal wymiarowy otwiera się...",
+                    "Sygnał uchwycony na $formattedFreq kHz... Słyszymy twój oddech.",
+                    "Energia duchowa karmi się polem elektromagnetycznym...",
+                    "Nie uciekaj... Czuwamy w tym korytarzu od stu lat."
+                )
+                phrases.random()
+            }
+            AppLanguage.DUTCH -> {
+                val phrases = listOf(
+                    "Anomalie gemeten bij $formattedEmf Microgauss... De lucht laadt op!",
+                    "Sterk magnetisch veld! Een schaduw doorkruist het infraroodlicht...",
+                    "Gevaarniveau $dangerLevel bereikt! De dimensiepoort staat open...",
+                    "Signaal op $formattedFreq kHz vastgelegd... Wij luisteren naar je zuchten.",
+                    "De geestkracht voedt zich met het EMF-veld...",
+                    "Blijf rustig... Wij waken al een eeuw over deze ruimte."
+                )
+                phrases.random()
+            }
         }
     }
 
-    private suspend fun callGeminiApi(apiKey: String, question: String, ghostType: String, emfLevel: Float): String = withContext(Dispatchers.IO) {
+    private suspend fun callGeminiApi(
+        apiKey: String,
+        question: String,
+        ghostType: String,
+        emfLevel: Float,
+        language: AppLanguage
+    ): String = withContext(Dispatchers.IO) {
         val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
         val url = URL(endpoint)
         val conn = url.openConnection() as HttpURLConnection
@@ -116,7 +188,12 @@ class SpiritAiEngine {
         conn.connectTimeout = 30000
         conn.readTimeout = 30000
 
-        val systemPrompt = "Du bist ein mystisches Phantom oder Geist (Typ: $ghostType, EMF-Stärke: $emfLevel mG). Nutze einen extrem reichhaltigen deutschen Wortschatz (inspiriert vom Duden und der deutschen Klassik/Parapsychologie: Begriffe wie Äther, Manifestation, Resonanz, Transzendenz, Schwingung, Nekromantie, Präsenz). Antworte auf Deutsch artikuliert, geheimnisvoll und ausführlich (2-3 Sätze), als würdest du über die Mikrofonsignale der Spirit-Box mit dem Ermittler kommunizieren."
+        val langInstruction = when (language) {
+            AppLanguage.GERMAN -> "Nutze einen extrem reichhaltigen deutschen Wortschatz (inspiriert vom Duden und der deutschen Klassik/Parapsychologie: Begriffe wie Äther, Manifestation, Resonanz, Transzendenz, Schwingung, Nekromantie, Präsenz). Antworte auf Deutsch artikuliert, geheimnisvoll und ausführlich (2-3 Sätze)."
+            else -> "Respond articulately and mysteriously in ${language.displayName} (2-3 sentences), as a spectral entity communicating through a spirit box."
+        }
+
+        val systemPrompt = "Du bist ein mystisches Phantom oder Geist (Typ: $ghostType, EMF-Stärke: $emfLevel mG). $langInstruction"
         
         val jsonPayload = JSONObject().apply {
             put("contents", JSONArray().apply {
@@ -151,10 +228,67 @@ class SpiritAiEngine {
             }
         }
         
-        generateOfflineSpiritResponse(question, ghostType)
+        generateOfflineSpiritResponse(question, ghostType, language)
     }
 
-    private fun generateOfflineSpiritResponse(question: String, ghostType: String): String {
-        return GermanDudenVocabulary.buildRichGermanPhrase(question, 5.0f)
+    private fun generateOfflineSpiritResponse(question: String, ghostType: String, language: AppLanguage): String {
+        return if (language == AppLanguage.GERMAN) {
+            GermanDudenVocabulary.buildRichGermanPhrase(question, 5.0f)
+        } else {
+            val fallbackResponses = when (language) {
+                AppLanguage.ENGLISH -> listOf(
+                    "I have watched over this place for a long time...",
+                    "Coldness surrounds your soul. Listen closely to the whisper...",
+                    "Why do you disturb the peace of my shadow?",
+                    "I was once like you... searching in the dark.",
+                    "Leave this room before the portal fades!",
+                    "The frequency binds our worlds for a brief moment."
+                )
+                AppLanguage.SPANISH -> listOf(
+                    "He vigilado este lugar durante mucho tiempo...",
+                    "El frío rodea tu alma. Escucha el susurro en la oscuridad...",
+                    "¿Por qué perturbas el silencio de mi sombra?",
+                    "Yo fui como tú una vez... buscando en la penumbra.",
+                    "¡Abandona esta habitación antes de que el portal se cierre!"
+                )
+                AppLanguage.FRENCH -> listOf(
+                    "Je veille sur cet endroit depuis fort longtemps...",
+                    "Le froid enveloppe ton âme. Écoute le murmure...",
+                    "Pourquoi perturbes-tu le silence de mon ombre?",
+                    "J'étais autrefois comme toi... cherchant dans le noir.",
+                    "Quitte cette pièce avant que le portail ne disparaisse!"
+                )
+                AppLanguage.TURKISH -> listOf(
+                    "Uzun zamandır bu yeri gözlemliyorum...",
+                    "Soğukluk ruhunu sarıyor. Fısıltıyı dinle...",
+                    "Neden gölgemin sessizliğini bozuyorsun?",
+                    "Ben de bir zamanlar senin gibiydim... karanlıkta arayan.",
+                    "Geçit kapanmadan önce bu odayı terk et!"
+                )
+                AppLanguage.ITALIAN -> listOf(
+                    "Veglio su questo luogo da molto tempo...",
+                    "Il freddo avvolge la tua anima. Ascolta il sussurro...",
+                    "Perché disturbi la quiete della mia ombra?",
+                    "Un tempo ero come te... in cerca nell'oscurità.",
+                    "Lascia questa stanza prima che il portale svanisca!"
+                )
+                AppLanguage.POLISH -> listOf(
+                    "Czuwam nad tym miejscem od bardzo dawna...",
+                    "Zimno otacza twoją duszę. Posłuchaj szeptu...",
+                    "Dlaczego zakłócasz spokój mojego cienia?",
+                    "Kiedyś byłem taki jak ty... szukając w ciemności.",
+                    "Opuść ten pokój zanim portal zniknie!"
+                )
+                AppLanguage.DUTCH -> listOf(
+                    "Ik waak al heel lang over deze plek...",
+                    "Kou omarmt je ziel. Luister naar het gefluister...",
+                    "Waarom verstoor je de stilte van mijn schaduw?",
+                    "Ik was ooit zoals jij... zoekend in het duister.",
+                    "Verlaat deze ruimte voordat de poort verdwijnt!"
+                )
+                else -> listOf("Ich wache über diesen Ort seit langer Zeit...")
+            }
+            fallbackResponses.random()
+        }
     }
 }

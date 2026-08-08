@@ -29,6 +29,45 @@ class GhostRepository(private val ghostDao: GhostDao) {
             val hourMs = 3600_000L
             val initialGhosts = listOf(
                 GhostDetectionEntity(
+                    name = "Dämon Belial [GEFANGEN]",
+                    type = "DÄMON (GEFANGEN)",
+                    emfLevel = 9.9f,
+                    frequencyKhz = 88.5f,
+                    dangerLevel = 5,
+                    locationName = "Schattenkammer B3",
+                    timestamp = now - hourMs * 1,
+                    notes = "Gefangen im Dämonen-Siegel. Bösartige Spektralaura neutralisiert.",
+                    spectralColorHex = "#FF0033",
+                    isFavorite = true,
+                    lastWords = "Das Siegel wird nicht ewig halten!"
+                ),
+                GhostDetectionEntity(
+                    name = "Vampir Nosferatu [GEFANGEN]",
+                    type = "VAMPIR (GEFANGEN)",
+                    emfLevel = 9.1f,
+                    frequencyKhz = 74.2f,
+                    dangerLevel = 5,
+                    locationName = "Gruft Ostflügel",
+                    timestamp = now - hourMs * 4,
+                    notes = "Blut-Vampir in die Spektral-Falle gebannt.",
+                    spectralColorHex = "#DD00FF",
+                    isFavorite = true,
+                    lastWords = "Die Nacht gehört mir..."
+                ),
+                GhostDetectionEntity(
+                    name = "Quanten-Spalte Omega [VERRIEGELT]",
+                    type = "DIMENSIONSRISS (GESCHLOSSEN)",
+                    emfLevel = 8.8f,
+                    frequencyKhz = 102.4f,
+                    dangerLevel = 4,
+                    locationName = "Dimensionen-Portalraum",
+                    timestamp = now - hourMs * 12,
+                    notes = "Interdimensionaler Riss versiegelt & stabilisiert.",
+                    spectralColorHex = "#00E5FF",
+                    isFavorite = true,
+                    lastWords = "Portal geschlossen."
+                ),
+                GhostDetectionEntity(
                     name = "Anomalie Alpha-9",
                     type = "Poltergeist",
                     emfLevel = 8.4f,
@@ -38,7 +77,7 @@ class GhostRepository(private val ghostDao: GhostDao) {
                     timestamp = now - hourMs * 2,
                     notes = "Starke elektromagnetische Fluktuationen und kühle Luftströme registriert.",
                     spectralColorHex = "#00FF66",
-                    isFavorite = true,
+                    isFavorite = false,
                     lastWords = "Ich ruhe nie..."
                 ),
                 GhostDetectionEntity(

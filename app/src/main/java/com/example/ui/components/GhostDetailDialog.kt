@@ -290,6 +290,59 @@ fun GhostDetailDialog(
                     }
                 }
 
+                // Dedicated Spectral Meaning & Lore Analysis Card (Bedeutung im Verlauf)
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (ghost.dangerLevel >= 4) Color(0xFF230009) else InfraGreenSurfaceVariant
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (ghost.dangerLevel >= 4) AlertInfraRed else InfraGreenBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "BEDEUTUNG & DEMONOLOGISCHE ANALYSE:",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = if (ghost.dangerLevel >= 4) AlertInfraRed else InfraGreenPrimary,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+
+                            IconButton(
+                                onClick = { onSpeakText(ghost.notes) },
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = "Bedeutung Vorlesen",
+                                    tint = if (ghost.dangerLevel >= 4) AlertInfraRed else InfraGreenPrimary
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = if (ghost.notes.isNotBlank()) ghost.notes else "Keine spezifische Bedeutung im Verlauf protokolliert.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = InfraGreenTextPrimary,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp
+                            )
+                        )
+                    }
+                }
+
                 // Field Notes Section
                 Column {
                     Row(

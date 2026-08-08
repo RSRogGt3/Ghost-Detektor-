@@ -6,6 +6,7 @@ import android.speech.tts.UtteranceProgressListener
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import com.example.ui.i18n.AppLanguage
 import java.util.Locale
 
 class SpiritTtsManager(context: Context) : TextToSpeech.OnInitListener {
@@ -46,6 +47,24 @@ class SpiritTtsManager(context: Context) : TextToSpeech.OnInitListener {
                 }
             })
             isInitialized = true
+        }
+    }
+
+    fun setLanguage(language: AppLanguage) {
+        if (!isInitialized) return
+        val locale = when (language) {
+            AppLanguage.GERMAN -> Locale.GERMAN
+            AppLanguage.ENGLISH -> Locale.US
+            AppLanguage.TURKISH -> Locale("tr", "TR")
+            AppLanguage.SPANISH -> Locale("es", "ES")
+            AppLanguage.FRENCH -> Locale.FRENCH
+            AppLanguage.ITALIAN -> Locale.ITALIAN
+            AppLanguage.POLISH -> Locale("pl", "PL")
+            AppLanguage.DUTCH -> Locale("nl", "NL")
+        }
+        val result = tts?.setLanguage(locale)
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            tts?.setLanguage(Locale.GERMAN)
         }
     }
 

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -94,6 +96,7 @@ fun HistoryScreen(
     val selectedGhostDetail by viewModel.selectedGhostDetail.collectAsStateWithLifecycle()
 
     var showExportDialog by remember { mutableStateOf(false) }
+    val historyListState = rememberLazyListState()
 
     val typeFilters = UiStrings.getTypeFilters(appLanguage)
 
@@ -276,20 +279,35 @@ fun HistoryScreen(
                     }
                 }
             } else {
-                LazyColumn(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    contentPadding = PaddingValues(bottom = 12.dp)
+                        .weight(1f)
                 ) {
-                    items(filteredGhosts, key = { it.id }) { ghost ->
-                        GhostDiscoveryCard(
-                            ghost = ghost,
-                            onClick = { viewModel.selectGhostDetail(ghost) },
-                            onToggleFavorite = { viewModel.toggleFavorite(ghost) }
-                        )
+                    LazyColumn(
+                        state = historyListState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(bottom = 12.dp)
+                    ) {
+                        items(filteredGhosts, key = { it.id }) { ghost ->
+                            GhostDiscoveryCard(
+                                ghost = ghost,
+                                onClick = { viewModel.selectGhostDetail(ghost) },
+                                onToggleFavorite = { viewModel.toggleFavorite(ghost) }
+                            )
+                        }
                     }
+
+                    Spacer(modifier = Modifier.width(6.dp))
+                    com.example.ui.components.VerticalScrollbarForLazyList(
+                        state = historyListState,
+                        color = InfraGreenPrimary,
+                        trackColor = InfraGreenBorder,
+                        width = 6.dp
+                    )
                 }
             }
         }
@@ -380,7 +398,8 @@ fun HistoryScreen(
                         )
                     )
 
-                    Box(
+                    val exportScrollState = rememberScrollState()
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp)
@@ -388,15 +407,29 @@ fun HistoryScreen(
                             .background(Color.Black)
                             .border(1.dp, InfraGreenBorder, RoundedCornerShape(8.dp))
                             .padding(10.dp)
-                            .verticalScroll(rememberScrollState())
                     ) {
-                        Text(
-                            text = summaryText,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = InfraGreenTextPrimary,
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .verticalScroll(exportScrollState)
+                        ) {
+                            Text(
+                                text = summaryText,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = InfraGreenTextPrimary,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp
+                                )
                             )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+                        com.example.ui.components.VerticalScrollbarForScrollState(
+                            state = exportScrollState,
+                            color = InfraGreenPrimary,
+                            trackColor = InfraGreenBorder,
+                            width = 6.dp
                         )
                     }
                 }
@@ -532,9 +565,10 @@ fun GhostDiscoveryCard(
                     Text(
                         text = "${ghost.type.uppercase()} • ${ghost.locationName}",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextMuted,
+                            color = if (ghost.type.contains("ROTER PUNKT") || ghost.dangerLevel >= 4) AlertInfraRed else InfraGreenTextMuted,
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp
+                            fontSize = 11.sp,
+                            fontWeight = if (ghost.dangerLevel >= 4) FontWeight.Bold else FontWeight.Normal
                         )
                     )
 
@@ -544,6 +578,19 @@ fun GhostDiscoveryCard(
                             color = InfraGreenTextMuted,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp
+                        )
+                    )
+                }
+
+                if (ghost.notes.isNotBlank()) {
+                    Text(
+                        text = ghost.notes.lines().firstOrNull() ?: ghost.notes,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = InfraGreenTextPrimary.copy(alpha = 0.8f),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 9.5.sp
                         )
                     )
                 }
