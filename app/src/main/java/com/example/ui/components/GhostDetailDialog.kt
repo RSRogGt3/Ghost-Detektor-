@@ -54,7 +54,7 @@ import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
 import com.example.ui.theme.InfraGreenSurfaceVariant
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.theme.InfraGreenTextPrimary
 import com.example.ui.theme.ThermalAmber
 import java.text.SimpleDateFormat
@@ -131,7 +131,7 @@ fun GhostDetailDialog(
                             Icon(
                                 imageVector = if (ghost.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                 contentDescription = "Favorit",
-                                tint = if (ghost.isFavorite) AlertInfraRed else InfraGreenTextMuted
+                                tint = if (ghost.isFavorite) AlertInfraRed else InfraGreenTextPrimaryVariant
                             )
                         }
 
@@ -139,7 +139,7 @@ fun GhostDetailDialog(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Schließen",
-                                tint = InfraGreenTextMuted
+                                tint = InfraGreenTextPrimaryVariant
                             )
                         }
                     }
@@ -161,7 +161,7 @@ fun GhostDetailDialog(
                         ) {
                             Text(
                                 text = "ENTITÄTS-TYP:",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
+                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
                             )
                             Text(
                                 text = ghost.type.uppercase(),
@@ -175,7 +175,7 @@ fun GhostDetailDialog(
                         ) {
                             Text(
                                 text = "EMF FELDSTÄRKE:",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
+                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
                             )
                             Text(
                                 text = "${ghost.emfLevel} mG",
@@ -189,7 +189,7 @@ fun GhostDetailDialog(
                         ) {
                             Text(
                                 text = "EVP FREQUENZ:",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
+                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
                             )
                             Text(
                                 text = "${ghost.frequencyKhz} kHz",
@@ -203,7 +203,7 @@ fun GhostDetailDialog(
                         ) {
                             Text(
                                 text = "GEFAHRENSTUFE:",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
+                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
                             )
                             Text(
                                 text = "STUFE ${ghost.dangerLevel} / 5",
@@ -221,7 +221,7 @@ fun GhostDetailDialog(
                         ) {
                             Text(
                                 text = "FUNDORT:",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
+                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
                             )
                             Text(
                                 text = ghost.locationName,
@@ -235,11 +235,11 @@ fun GhostDetailDialog(
                         ) {
                             Text(
                                 text = "ZEITPUNKT:",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
+                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
                             )
                             Text(
                                 text = formattedDate,
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
                             )
                         }
                     }
@@ -262,7 +262,7 @@ fun GhostDetailDialog(
                             Text(
                                 text = "EVP BOTSCHAFT / TRANSMISSION:",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = InfraGreenTextMuted,
+                                    color = InfraGreenTextPrimaryVariant,
                                     fontFamily = FontFamily.Monospace
                                 )
                             )
@@ -353,7 +353,7 @@ fun GhostDetailDialog(
                         Text(
                             text = "ERMITTLER-NOTIZEN:",
                             style = MaterialTheme.typography.labelMedium.copy(
-                                color = InfraGreenTextMuted,
+                                color = InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace
                             )
                         )
@@ -367,7 +367,7 @@ fun GhostDetailDialog(
                             Icon(
                                 imageVector = Icons.Default.Edit,
                                 contentDescription = "Bearbeiten",
-                                tint = if (isEditingNotes) InfraGreenPrimary else InfraGreenTextMuted
+                                tint = if (isEditingNotes) InfraGreenPrimary else InfraGreenTextPrimaryVariant
                             )
                         }
                     }

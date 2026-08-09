@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
@@ -76,7 +77,7 @@ import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
 import com.example.ui.theme.InfraGreenSurfaceVariant
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.theme.InfraGreenTextPrimary
 import com.example.ui.viewmodel.GhostViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -205,7 +206,6 @@ fun FilterSettingsScreen(
             }
 
             // App Security & User Access Protection Card
-            Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
                 modifier = Modifier.fillMaxWidth().testTag("app_security_settings_card")
@@ -239,7 +239,7 @@ fun FilterSettingsScreen(
                                 Text(
                                     text = "PIN-Sperre & Schutz vor Fremdzugriff",
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextMuted,
+                                        color = InfraGreenTextPrimaryVariant,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 11.sp
                                     )
@@ -289,7 +289,7 @@ fun FilterSettingsScreen(
                             Text(
                                 text = "App erfordert PIN-Eingabe beim Start",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = InfraGreenTextMuted,
+                                    color = InfraGreenTextPrimaryVariant,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp
                                 )
@@ -329,7 +329,7 @@ fun FilterSettingsScreen(
                             Text(
                                 text = "Sperrt die App sofort, wenn sie minimiert wird",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = InfraGreenTextMuted,
+                                    color = InfraGreenTextPrimaryVariant,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp
                                 )
@@ -486,7 +486,6 @@ fun FilterSettingsScreen(
             }
 
             // Background Operation & Battery Saver Card
-            Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
                 modifier = Modifier.fillMaxWidth().testTag("background_battery_saver_card")
@@ -500,7 +499,9 @@ fun FilterSettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                    }
+                }
+            }
                             Icon(
                                 imageVector = Icons.Default.BatterySaver,
                                 contentDescription = null,
@@ -562,7 +563,7 @@ fun FilterSettingsScreen(
                             Text(
                                 text = if (backgroundScan247Enabled) "Radar-Scans laufen weiter, auch wenn die App minimiert ist" else "Scans pausieren beim Minimieren der App",
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = InfraGreenTextMuted,
+                                    color = InfraGreenTextPrimaryVariant,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp
                                 )
@@ -575,7 +576,7 @@ fun FilterSettingsScreen(
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.Black,
                                 checkedTrackColor = InfraGreenPrimary,
-                                uncheckedThumbColor = InfraGreenTextMuted,
+                                uncheckedThumbColor = InfraGreenTextPrimaryVariant,
                                 uncheckedTrackColor = InfraGreenSurfaceVariant
                             )
                         )
@@ -604,7 +605,7 @@ fun FilterSettingsScreen(
                             Text(
                                 text = UiStrings.getBatterySaverDesc(appLanguage, isBatterySaverThrottling),
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = if (isBatterySaverThrottling) Color(0xFFFFCC00) else InfraGreenTextMuted,
+                                    color = if (isBatterySaverThrottling) Color(0xFFFFCC00) else InfraGreenTextPrimaryVariant,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp
                                 )
@@ -617,7 +618,7 @@ fun FilterSettingsScreen(
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.Black,
                                 checkedTrackColor = InfraGreenPrimary,
-                                uncheckedThumbColor = InfraGreenTextMuted,
+                                uncheckedThumbColor = InfraGreenTextPrimaryVariant,
                                 uncheckedTrackColor = InfraGreenSurfaceVariant
                             ),
                             modifier = Modifier.testTag("settings_battery_saver_switch")
@@ -627,7 +628,6 @@ fun FilterSettingsScreen(
             }
 
             // System Permissions Control Card
-            Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
                 modifier = Modifier.fillMaxWidth().testTag("system_permissions_card")
@@ -688,7 +688,7 @@ fun FilterSettingsScreen(
                                 Text(
                                     text = if (hasMicPermission) "Aktiv: Echtzeit Spirit Box Audio-Eingabe" else "Inaktiv: Benötigt für Sprach-Eingabe",
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextMuted,
+                                        color = InfraGreenTextPrimaryVariant,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 10.sp
                                     )
@@ -775,7 +775,7 @@ fun FilterSettingsScreen(
                                 Text(
                                     text = if (hasCameraPermission) "Aktiv: Kamerafeed & Taschenlampe" else "Inaktiv: Benötigt für Video-Scan",
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextMuted,
+                                        color = InfraGreenTextPrimaryVariant,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 10.sp
                                     )
@@ -862,7 +862,7 @@ fun FilterSettingsScreen(
                                 Text(
                                     text = if (hasLocationPermission) "Aktiv: Präzise Koordinaten für Funde" else "Inaktiv: Koordinaten-Verortung",
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextMuted,
+                                        color = InfraGreenTextPrimaryVariant,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 10.sp
                                     )
@@ -917,703 +917,33 @@ fun FilterSettingsScreen(
                 }
             }
 
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Palette, contentDescription = null, tint = InfraGreenPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("THEME-FARBE", style = MaterialTheme.typography.titleMedium.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        val colors = listOf("GREEN" to Color(0xFF00FF66), "RED" to Color(0xFFFF2244), "CYAN" to Color(0xFF00E5FF), "PURPLE" to Color(0xFFBB33FF))
+                        colors.forEach { (name, colorValue) ->
+                            val isSelected = appThemeColor == name
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(colorValue)
+                                    .border(2.dp, if (isSelected) Color.White else Color.Transparent, RoundedCornerShape(20.dp))
+                                    .clickable { viewModel.setAppThemeColor(name) }
+                            )
+                        }
+                    }
+                }
+            }
+
             // Language Selection Card
-            Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth().testTag("language_selector_card")
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = UiStrings.getLanguageCardTitle(appLanguage),
-                        style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
-                    )
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        AppLanguage.entries.chunked(4).forEach { chunk ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                chunk.forEach { lang ->
-                                    val isSelected = lang == appLanguage
-                                    Box(
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(if (isSelected) InfraGreenPrimary.copy(alpha = 0.25f) else InfraGreenSurfaceVariant)
-                                            .border(1.dp, if (isSelected) InfraGreenPrimary else InfraGreenBorder, RoundedCornerShape(8.dp))
-                                            .clickable { viewModel.setAppLanguage(lang) }
-                                            .padding(vertical = 10.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text(
-                                                text = lang.flag,
-                                                style = MaterialTheme.typography.titleMedium
-                                            )
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text(
-                                                text = lang.displayName,
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = if (isSelected) InfraGreenPrimary else InfraGreenTextPrimary,
-                                                    fontFamily = FontFamily.Monospace,
-                                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                    fontSize = 10.sp
-                                                ),
-                                                maxLines = 1
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Spectral Filter Choice Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = UiStrings.getActiveFilterTitle(appLanguage),
-                        style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
-                    )
-
-                    FilterMode.values().forEach { mode ->
-                        val isSelected = mode == currentFilterMode
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) mode.primaryColor.copy(alpha = 0.2f) else InfraGreenSurfaceVariant)
-                                .border(1.dp, if (isSelected) mode.primaryColor else InfraGreenBorder, RoundedCornerShape(8.dp))
-                                .clickable { viewModel.setFilterMode(mode) }
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = mode.displayName,
-                                style = MaterialTheme.typography.titleSmall.copy(
-                                    color = if (isSelected) mode.primaryColor else InfraGreenTextPrimary,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-
-                            if (isSelected) {
-                                Text(
-                                    text = "AKTIV",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = mode.primaryColor,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Spectral Filter Intensity Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth().testTag("filter_intensity_card")
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "FILTER INTENSITÄT & KONTRAST",
-                            style = MaterialTheme.typography.titleSmall.copy(
-                                color = currentFilterMode.primaryColor,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        Text(
-                            text = "${(filterIntensity * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = currentFilterMode.primaryColor,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                    Text(
-                        text = "Stärke und Spektralkontrast des Infrarot-Nachtsicht-Kamera-Overlays anpassen",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextMuted,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp
-                        )
-                    )
-
-                    Slider(
-                        value = filterIntensity,
-                        onValueChange = { viewModel.setFilterIntensity(it) },
-                        valueRange = 0.10f..1.00f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = currentFilterMode.primaryColor,
-                            activeTrackColor = currentFilterMode.primaryColor,
-                            inactiveTrackColor = currentFilterMode.primaryColor.copy(alpha = 0.2f)
-                        ),
-                        modifier = Modifier.fillMaxWidth().testTag("settings_filter_intensity_slider")
-                    )
-                }
-            }
-
-            // HUD Overlays & Audio Toggles
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "VISUELLE & AUDIO OPTIONEN:",
-                        style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = UiStrings.getCameraFeedLabel(appLanguage),
-                                style = MaterialTheme.typography.bodyMedium.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            )
-                            Text(
-                                text = UiStrings.getCameraFeedDesc(appLanguage),
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-                            )
-                        }
-
-                        Switch(
-                            checked = isCameraEnabled,
-                            onCheckedChange = { viewModel.toggleCameraBackground() },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = InfraGreenPrimary,
-                                uncheckedThumbColor = InfraGreenTextMuted,
-                                uncheckedTrackColor = InfraGreenSurfaceVariant
-                            )
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = UiStrings.getCrtOverlayLabel(appLanguage),
-                                style = MaterialTheme.typography.bodyMedium.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            )
-                            Text(
-                                text = "Nachtsicht-Linienraster im Display anzeigen",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-                            )
-                        }
-
-                        Switch(
-                            checked = showCrtOverlay,
-                            onCheckedChange = { viewModel.toggleCrtOverlay() },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = InfraGreenPrimary,
-                                uncheckedThumbColor = InfraGreenTextMuted,
-                                uncheckedTrackColor = InfraGreenSurfaceVariant
-                            )
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "AUDIO GEIGER & RADAR TON",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            )
-                            Text(
-                                text = "Akustische Signale bei EMF-Ausschlag",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-                            )
-                        }
-
-                        Switch(
-                            checked = audioFeedbackEnabled,
-                            onCheckedChange = { viewModel.toggleAudioFeedback() },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = InfraGreenPrimary,
-                                uncheckedThumbColor = InfraGreenTextMuted,
-                                uncheckedTrackColor = InfraGreenSurfaceVariant
-                            )
-                        )
-                    }
-
-                    // Vibration Toggle & Intensity Control
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.3f))
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "HAPTISCHE VIBRATION",
-                                    style = MaterialTheme.typography.bodyMedium.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                                )
-                                Text(
-                                    text = "Vibration bei EMF-Ausschlägen & Entitäts-Befreiung",
-                                    style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-                                )
-                            }
-
-                            Switch(
-                                checked = vibrationEnabled,
-                                onCheckedChange = { viewModel.toggleVibration() },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.Black,
-                                    checkedTrackColor = InfraGreenPrimary,
-                                    uncheckedThumbColor = InfraGreenTextMuted,
-                                    uncheckedTrackColor = InfraGreenSurfaceVariant
-                                ),
-                                modifier = Modifier.testTag("vibration_switch")
-                            )
-                        }
-
-                        if (vibrationEnabled) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "VIBRATIONS-INTENSITÄT:",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = currentFilterMode.primaryColor,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp
-                                        )
-                                    )
-                                    Text(
-                                        text = "${(vibrationIntensity * 100).toInt()}%",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = currentFilterMode.primaryColor,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp
-                                        )
-                                    )
-                                }
-
-                                Slider(
-                                    value = vibrationIntensity,
-                                    onValueChange = { viewModel.setVibrationIntensity(it) },
-                                    valueRange = 0.0f..1.00f,
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = currentFilterMode.primaryColor,
-                                        activeTrackColor = currentFilterMode.primaryColor,
-                                        inactiveTrackColor = currentFilterMode.primaryColor.copy(alpha = 0.25f)
-                                    ),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .testTag("vibration_intensity_slider")
-                                )
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "AUTOMATISCHE VERNICHTUNG",
-                                style = MaterialTheme.typography.bodyMedium.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            )
-                            Text(
-                                text = "Geister auf dem Radar automatisch befreien",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-                            )
-                        }
-
-                        Switch(
-                            checked = isAutoDestroyEnabled,
-                            onCheckedChange = { viewModel.toggleAutoDestroy() },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = InfraGreenPrimary,
-                                uncheckedThumbColor = InfraGreenTextMuted,
-                                uncheckedTrackColor = InfraGreenSurfaceVariant
-                            )
-                        )
-                    }
-                }
-            }
-
-            // Text-to-Speech Engine Controls
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.RecordVoiceOver,
-                            contentDescription = null,
-                            tint = InfraGreenPrimary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "SPIRIT BOX TTS SCHNITTSTELLE:",
-                            style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
-                        )
-                    }
-
-                    // Pitch
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Tonhöhe (Pitch):",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace)
-                            )
-                            Text(
-                                text = String.format("%.2fx", ttsPitch),
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            )
-                        }
-                        Slider(
-                            value = ttsPitch,
-                            onValueChange = { viewModel.spiritTtsManager.setPitch(it) },
-                            valueRange = 0.3f..1.2f,
-                            colors = SliderDefaults.colors(
-                                thumbColor = InfraGreenPrimary,
-                                activeTrackColor = InfraGreenPrimary,
-                                inactiveTrackColor = InfraGreenBorder
-                            )
-                        )
-                    }
-
-                    // Rate
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Sprechgeschwindigkeit (Rate):",
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace)
-                            )
-                            Text(
-                                text = String.format("%.2fx", ttsRate),
-                                style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            )
-                        }
-                        Slider(
-                            value = ttsRate,
-                            onValueChange = { viewModel.spiritTtsManager.setSpeechRate(it) },
-                            valueRange = 0.4f..1.4f,
-                            colors = SliderDefaults.colors(
-                                thumbColor = InfraGreenPrimary,
-                                activeTrackColor = InfraGreenPrimary,
-                                inactiveTrackColor = InfraGreenBorder
-                            )
-                        )
-                    }
-                }
-            }
-
-            // App info & Reset Database
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = InfraGreenPrimary
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "SYSTEM INFORMATION",
-                            style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
-                        )
-                    }
-
-                    Text(
-                        text = "Geister-Detektor Pro v1.2\nInfra-Grün HUD & Spektral-Scanner Engine\nOffline & Gemini AI Spirit Box Protokoll",
-                        style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace)
-                    )
-
-                    Button(
-                        onClick = { showClearConfirmDialog = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = AlertInfraRed.copy(alpha = 0.2f)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, AlertInfraRed),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(imageVector = Icons.Default.Delete, contentDescription = null, tint = AlertInfraRed)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "ALLE FUNDE LÖSCHEN",
-                            color = AlertInfraRed,
-                            style = MaterialTheme.typography.labelLarge.copy(fontFamily = FontFamily.Monospace)
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    if (showClearConfirmDialog) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { showClearConfirmDialog = false }) {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-            ) {
-                Column(
-                    modifier = Modifier.padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = "ALLE FUNDE LÖSCHEN?",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = AlertInfraRed,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-
-                    Text(
-                        text = "Möchtest du wirklich die gesamte Datenbank leeren? Diese Aktion kann nicht rückgängig gemacht werden.",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = InfraGreenTextPrimary,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Button(
-                            onClick = { showClearConfirmDialog = false },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
-                        ) {
-                            Text("ABBRECHEN", color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Button(
-                            onClick = {
-                                viewModel.clearAllGhosts()
-                                showClearConfirmDialog = false
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = AlertInfraRed)
-                        ) {
-                            Text("BESTÄTIGEN", color = Color.White, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Change Security PIN Dialog
-    if (showChangePinDialog) {
-        AlertDialog(
-            onDismissRequest = { showChangePinDialog = false },
-            confirmButton = {},
-            dismissButton = {},
-            containerColor = InfraGreenSurface,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.border(1.dp, InfraGreenBorder, RoundedCornerShape(12.dp)),
-            text = {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.VpnKey,
-                            contentDescription = null,
-                            tint = InfraGreenPrimary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "SICHERHEITS-PIN ÄNDERN",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = InfraGreenPrimary,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-
-                    Text(
-                        text = "Geben Sie Ihre aktuelle PIN ein und wählen Sie eine neue 4-stellige Zahlen-PIN.",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextMuted,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp
-                        )
-                    )
-
-                    OutlinedTextField(
-                        value = currentPinInput,
-                        onValueChange = { if (it.length <= 4) currentPinInput = it },
-                        label = { Text("Aktuelle PIN", color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 12.sp) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = InfraGreenPrimary,
-                            unfocusedBorderColor = InfraGreenBorder,
-                            focusedTextColor = InfraGreenTextPrimary,
-                            unfocusedTextColor = InfraGreenTextPrimary
-                        ),
-                        modifier = Modifier.fillMaxWidth().testTag("current_pin_input")
-                    )
-
-                    OutlinedTextField(
-                        value = newPinInput,
-                        onValueChange = { if (it.length <= 4) newPinInput = it },
-                        label = { Text("Neue 4-stellige PIN", color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 12.sp) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = InfraGreenPrimary,
-                            unfocusedBorderColor = InfraGreenBorder,
-                            focusedTextColor = InfraGreenTextPrimary,
-                            unfocusedTextColor = InfraGreenTextPrimary
-                        ),
-                        modifier = Modifier.fillMaxWidth().testTag("new_pin_input")
-                    )
-
-                    if (pinDialogError.isNotEmpty()) {
-                        Text(
-                            text = pinDialogError,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = AlertInfraRed,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            )
-                        )
-                    }
-
-                    if (pinDialogSuccess.isNotEmpty()) {
-                        Text(
-                            text = pinDialogSuccess,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = InfraGreenPrimary,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp
-                            )
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Button(
-                            onClick = { showChangePinDialog = false },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
-                        ) {
-                            Text("ABBRECHEN", color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Button(
-                            onClick = {
-                                if (newPinInput.length != 4 || !newPinInput.all { it.isDigit() }) {
-                                    pinDialogError = "Neue PIN muss genau 4 Zahlen enthalten!"
-                                    pinDialogSuccess = ""
-                                } else {
-                                    val success = viewModel.changePin(currentPinInput, newPinInput)
-                                    if (success) {
-                                        pinDialogSuccess = "✅ PIN erfolgreich geändert!"
-                                        pinDialogError = ""
-                                        currentPinInput = ""
-                                        newPinInput = ""
-                                    } else {
-                                        pinDialogError = "❌ Falsche aktuelle PIN!"
-                                        pinDialogSuccess = ""
-                                    }
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary)
-                        ) {
-                            Text("SPEICHERN", color = Color.Black, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
-        )
-    }
-}

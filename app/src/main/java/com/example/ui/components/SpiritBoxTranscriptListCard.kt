@@ -53,7 +53,7 @@ fun SpiritBoxTranscriptListCard(
 ) {
     var inputText by remember { mutableStateOf("") }
     var isExpanded by remember { mutableStateOf(false) }
-    var isCardMinimized by remember { mutableStateOf(false) }
+    var isCardMinimized by remember { mutableStateOf(true) }
     var showOverlayDialog by remember { mutableStateOf(false) }
 
     val context = LocalContext.current

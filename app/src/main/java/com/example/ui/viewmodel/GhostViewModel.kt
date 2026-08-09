@@ -46,6 +46,12 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     val spiritTtsManager = SpiritTtsManager(application)
     val microphoneAnalyzer = MicrophoneAudioAnalyzer(application)
     private val spiritAiEngine = SpiritAiEngine()
+    private val _appThemeColor = MutableStateFlow("GREEN")
+    val appThemeColor: StateFlow<String> = _appThemeColor
+
+    fun setAppThemeColor(color: String) {
+        _appThemeColor.value = color
+    }
     val sensorManager = GhostSensorManager(application)
     
     private val vibrator: Vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -842,7 +848,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 val scanInterval = if (_isBatterySaverThrottling.value) 4000L else 800L
                 delay(scanInterval)
                 if (_isScanning.value) {
-                    if (_isLiberatingAnomalies.value) continue
+                    if (_isLiberatingAnomalies.value || _isCapturingEntity.value || _isClosingDimension.value) continue
 
                     val rawSensorEmf = sensorManager.sensorEmfStrength.value
                     val motion = sensorManager.motionIntensity.value
@@ -950,13 +956,16 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                     _radarBlips.value = updatedBlips
 
                     if (_isAutoDestroyEnabled.value || _autoCaptureLiberateEnabled.value) {
-                        val maxDanger = updatedBlips.maxByOrNull { it.dangerLevel }
-                        if (maxDanger != null && maxDanger.dangerLevel >= 3) {
-                            viewModelScope.launch {
-                                delay(600)
-                                liberateSingleBlip(maxDanger)
-                                captureEntity()
-                            }
+                        val rift = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT }
+                        val threat = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DEMON || it.category == com.example.ui.components.EntityCategory.VAMPIRE }
+                        val ghost = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.GHOST }
+                        
+                        if (rift != null && !_isClosingDimension.value) {
+                            viewModelScope.launch { delay(300); closeDimensionRift(rift) }
+                        } else if (threat != null && !_isCapturingEntity.value) {
+                            viewModelScope.launch { delay(300); captureEntity(threat) }
+                        } else if (ghost != null && !_isLiberatingAnomalies.value) {
+                            viewModelScope.launch { delay(300); liberateSingleBlip(ghost) }
                         }
                     }
 
@@ -1044,6 +1053,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onCameraFrameAnomalies(anomalies: List<com.example.data.CameraAnomaly>, avgLuminance: Float) {
+        if (_isLiberatingAnomalies.value || _isCapturingEntity.value || _isClosingDimension.value) return
         _cameraAnomalies.value = anomalies
         _cameraAvgLuminance.value = avgLuminance
 
@@ -1076,13 +1086,17 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 val currentNonCamBlips = _radarBlips.value.filter { !it.id.startsWith("cam_") }
                 _radarBlips.value = currentNonCamBlips + camBlips
                 
-                if (_isAutoDestroyEnabled.value) {
-                    val maxDanger = camBlips.maxByOrNull { it.dangerLevel }
-                    if (maxDanger != null && maxDanger.dangerLevel >= 3) {
-                        viewModelScope.launch {
-                            delay(500)
-                            liberateSingleBlip(maxDanger)
-                        }
+                if (_isAutoDestroyEnabled.value || _autoCaptureLiberateEnabled.value) {
+                    val rift = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT }
+                    val threat = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DEMON || it.category == com.example.ui.components.EntityCategory.VAMPIRE }
+                    val ghost = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.GHOST }
+
+                    if (rift != null && !_isClosingDimension.value) {
+                        viewModelScope.launch { delay(300); closeDimensionRift(rift) }
+                    } else if (threat != null && !_isCapturingEntity.value) {
+                        viewModelScope.launch { delay(300); captureEntity(threat) }
+                    } else if (ghost != null && !_isLiberatingAnomalies.value) {
+                        viewModelScope.launch { delay(300); liberateSingleBlip(ghost) }
                     }
                 }
             }
@@ -1164,6 +1178,18 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun favoriteAllCapturedGhosts() {
+        viewModelScope.launch {
+            val allGhostsList = allDetections.value
+            val capturedGhosts = allGhostsList.filter { it.type.contains("GEFANGEN", ignoreCase = true) || it.name.contains("GEFANGEN", ignoreCase = true) }
+            val ghostsToFavorite = capturedGhosts.filter { !it.isFavorite }
+            
+            for (ghost in ghostsToFavorite) {
+                repository.updateGhost(ghost.copy(isFavorite = true))
+            }
+        }
+    }
+
     fun liberateRadarAnomalies() {
         if (_isLiberatingAnomalies.value) return
         _isLiberatingAnomalies.value = true
@@ -1215,12 +1241,15 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun liberateSingleBlip(blip: RadarBlip) {
+        if (_isLiberatingAnomalies.value) return
+        _isLiberatingAnomalies.value = true
+
         viewModelScope.launch {
             triggerVibration(120)
 
             if (_audioFeedbackEnabled.value) {
                 soundManager.playGhostFreedSound()
-                spiritTtsManager.speakSpiritBoxAudio("Roter Poltergeist ins Licht befreit.", emfLevel = 7f, dangerLevel = 1, soundManager = soundManager)
+                spiritTtsManager.speakSpiritBoxAudio("Geist ins Licht befreit.", emfLevel = 7f, dangerLevel = 1, soundManager = soundManager)
             }
 
             val currentBlips = _radarBlips.value.toMutableList()
@@ -1228,7 +1257,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             _radarBlips.value = currentBlips
 
             val label = blip.label ?: if (blip.dangerLevel >= 4) "Roter Poltergeist" else "Phantom Anomaly"
-            _liberatedBannerMessage.value = "✨ $label BEFREIT: Der rote Radar-Punkt wurde erlöst!"
+            _liberatedBannerMessage.value = "✨ $label BEFREIT: Der Radar-Punkt wurde erlöst!"
 
             val freedEntity = GhostDetectionEntity(
                 name = "$label [BEFREIT]",
@@ -1243,6 +1272,9 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 lastWords = "Danke für die Erlösung!"
             )
             repository.insertGhost(freedEntity)
+            
+            delay(1800)
+            _isLiberatingAnomalies.value = false
         }
     }
 

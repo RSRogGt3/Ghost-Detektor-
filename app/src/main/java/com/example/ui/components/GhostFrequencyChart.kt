@@ -40,7 +40,7 @@ import com.example.data.GhostDetectionEntity
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.theme.InfraGreenTextPrimary
 import com.example.ui.theme.ThermalAmber
 import java.util.Calendar
@@ -63,7 +63,7 @@ fun GhostFrequencyChart(
     }
 
     val maxCount = remember(hourCounts) { hourCounts.maxOrNull()?.coerceAtLeast(1) ?: 1 }
-    var isMinimized by remember { mutableStateOf(false) }
+    var isMinimized by remember { mutableStateOf(true) }
 
     Column(
         modifier = modifier
@@ -91,7 +91,7 @@ fun GhostFrequencyChart(
                 Text(
                     text = "Statistische Häufigkeit der Geister-Ereignisse nach Uhrzeit",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = InfraGreenTextMuted,
+                        color = InfraGreenTextPrimaryVariant,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp
                     )
@@ -156,11 +156,11 @@ fun GhostFrequencyChart(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("00:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
-            Text("06:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
-            Text("12:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
-            Text("18:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
-            Text("23:59", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
+            Text("00:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
+            Text("06:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
+            Text("12:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
+            Text("18:00", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
+            Text("23:59", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontSize = 9.sp, fontFamily = FontFamily.Monospace))
         }
         }
     }

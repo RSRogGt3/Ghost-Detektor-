@@ -388,6 +388,44 @@ fun ScannerScreen(
                 )
             }
 
+            // Central Interactive Radar Scanner Canvas directly under Taschenlampe
+            RadarScannerCanvas(
+                blips = radarBlips,
+                filterMode = filterMode,
+                isScanning = isScanning,
+                isLiberating = isLiberatingAnomalies,
+                onLiberateAll = { viewModel.liberateRadarAnomalies() },
+                onLiberateBlip = { blip -> viewModel.handleRadarBlipClick(blip) }
+            )
+
+            // Primary Spirit Liberation Action Button
+            Button(
+                onClick = { viewModel.liberateRadarAnomalies() },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .testTag("liberate_spirits_button"),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00E5FF)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = null,
+                    tint = Color.Black
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "✨ GEISTER & ANOMALIEN BEFREIEN",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = Color.Black,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+
             // Dedicated Radar Audio & Vibration Toggle Controls
             Row(
                 modifier = Modifier
@@ -477,44 +515,6 @@ fun ScannerScreen(
                 onToggleBackgroundScan247 = { viewModel.toggleBackgroundScan247() },
                 onToggleBatterySaver = { viewModel.toggleBatterySaverEnabled() }
             )
-
-            // Central Interactive Radar Scanner Canvas with Spirit Liberation
-            RadarScannerCanvas(
-                blips = radarBlips,
-                filterMode = filterMode,
-                isScanning = isScanning,
-                isLiberating = isLiberatingAnomalies,
-                onLiberateAll = { viewModel.liberateRadarAnomalies() },
-                onLiberateBlip = { blip -> viewModel.handleRadarBlipClick(blip) }
-            )
-
-            // Primary Spirit Liberation Action Button
-            Button(
-                onClick = { viewModel.liberateRadarAnomalies() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .testTag("liberate_spirits_button"),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00E5FF)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = null,
-                    tint = Color.Black
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "✨ GEISTER & ANOMALIEN BEFREIEN",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color = Color.Black,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
 
             // EMF Feldstärke Meter Gauge (unter Geister & Anomalien platziert)
             EmfMeter(

@@ -42,7 +42,7 @@ import com.example.ui.theme.AlertInfraRed
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.theme.ThermalAmber
 
 @Composable
@@ -58,7 +58,7 @@ fun EmfMeter(
         label = "emf_anim"
     )
 
-    var isMinimized by remember { mutableStateOf(false) }
+    var isMinimized by remember { mutableStateOf(true) }
 
     val fillRatio = (animatedEmf / 10f).coerceIn(0f, 1f)
     val statusColor = when {
@@ -97,7 +97,7 @@ fun EmfMeter(
                     Text(
                         text = "EMF-FELDSTÄRKE",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = InfraGreenTextMuted,
+                            color = InfraGreenTextPrimaryVariant,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.2.sp
@@ -171,7 +171,7 @@ fun EmfMeter(
                 Text(
                     text = String.format("EVP: %.1f kHz", frequencyKhz),
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = InfraGreenTextMuted,
+                        color = InfraGreenTextPrimaryVariant,
                         fontFamily = FontFamily.Monospace
                     )
                 )

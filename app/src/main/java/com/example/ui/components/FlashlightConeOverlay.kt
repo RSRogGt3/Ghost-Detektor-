@@ -119,30 +119,36 @@ fun FlashlightConeOverlay(
             val baseRight = baseLeft + beamBaseWidth
             val beamBottomY = canvasHeight * 0.95f
 
-            // 2. Conical Light Beam Geometry Path
-            val conePath = Path().apply {
-                moveTo(apexX, apexY)
-                lineTo(baseLeft, beamBottomY)
-                lineTo(baseRight, beamBottomY)
-                close()
+            // 2. 6 Volumetric Conical Light Beams (6 Lichtkegel)
+            val subConeCount = 6
+            val totalSpanWidth = canvasWidth * 0.90f
+            val startX = (canvasWidth - totalSpanWidth) / 2f
+            val subConeWidth = totalSpanWidth / subConeCount
+
+            for (i in 0 until subConeCount) {
+                val cLeft = startX + i * subConeWidth
+                val cRight = cLeft + subConeWidth * 0.95f
+
+                val subConePath = Path().apply {
+                    moveTo(apexX, apexY)
+                    lineTo(cLeft, beamBottomY)
+                    lineTo(cRight, beamBottomY)
+                    close()
+                }
+
+                val subBeamBrush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFFFFFE0).copy(alpha = (0.80f * flickerFactor).coerceIn(0f, 1f)),
+                        primaryColor.copy(alpha = (0.40f * flickerFactor).coerceIn(0f, 1f)),
+                        primaryColor.copy(alpha = (0.12f * flickerFactor).coerceIn(0f, 1f)),
+                        Color.Transparent
+                    ),
+                    startY = apexY,
+                    endY = beamBottomY
+                )
+
+                drawPath(path = subConePath, brush = subBeamBrush)
             }
-
-            // A. Primary Volumetric Light Cone Brush (Warm Tactical White + Phosphor Tint)
-            val beamBrush = Brush.verticalGradient(
-                colors = listOf(
-                    Color(0xFFFFFFE0).copy(alpha = (0.75f * flickerFactor).coerceIn(0f, 1f)),
-                    primaryColor.copy(alpha = (0.45f * flickerFactor).coerceIn(0f, 1f)),
-                    primaryColor.copy(alpha = (0.15f * flickerFactor).coerceIn(0f, 1f)),
-                    Color.Transparent
-                ),
-                startY = apexY,
-                endY = beamBottomY
-            )
-
-            drawPath(
-                path = conePath,
-                brush = beamBrush
-            )
 
             // B. Focused Center Hotspot Beam (Intensity Core)
             val coreWidth = canvasWidth * 0.42f

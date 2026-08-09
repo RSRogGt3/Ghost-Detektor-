@@ -61,7 +61,7 @@ import com.example.data.CameraAnomaly
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.theme.InfraGreenTextPrimary
 import com.example.util.CameraFrameAnalyzer
 
@@ -293,7 +293,7 @@ fun CameraPermissionCard(
                     Text(
                         text = if (hasPermission) "Live Kamera-Hintergrund Aktiv" else "Kamera-Zugriff für Nachtsicht-Feed erforderlich",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextMuted,
+                            color = InfraGreenTextPrimaryVariant,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp
                         )

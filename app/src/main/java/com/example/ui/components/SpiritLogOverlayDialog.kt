@@ -109,7 +109,7 @@ fun SpiritLogOverlayDialog(
                         Text(
                             text = "Phrasen oder Fragen durchsuchen...",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = InfraGreenTextMuted,
+                                color = InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace
                             )
                         )
@@ -118,7 +118,7 @@ fun SpiritLogOverlayDialog(
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = null,
-                            tint = InfraGreenTextMuted
+                            tint = InfraGreenTextPrimaryVariant
                         )
                     },
                     singleLine = true,
@@ -144,7 +144,7 @@ fun SpiritLogOverlayDialog(
                             text = if (logs.isEmpty()) "Keine Geister-Phrasen aufgezeichnet.\nAktiviere die Spirit-Box oder Auto-Fragen."
                             else "Keine passenden Einträge gefunden.",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = InfraGreenTextMuted,
+                                color = InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace
                             ),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -184,7 +184,7 @@ fun SpiritLogOverlayDialog(
                                             Text(
                                                 text = dateFormat.format(Date(entry.timestamp)),
                                                 style = MaterialTheme.typography.labelSmall.copy(
-                                                    color = InfraGreenTextMuted,
+                                                    color = InfraGreenTextPrimaryVariant,
                                                     fontFamily = FontFamily.Monospace,
                                                     fontSize = 10.sp
                                                 )
@@ -229,7 +229,7 @@ fun SpiritLogOverlayDialog(
                                         Text(
                                             text = "Frage: \"${entry.question}\"",
                                             style = MaterialTheme.typography.bodySmall.copy(
-                                                color = InfraGreenTextMuted,
+                                                color = InfraGreenTextPrimaryVariant,
                                                 fontFamily = FontFamily.Monospace,
                                                 fontSize = 11.sp
                                             )
@@ -285,7 +285,7 @@ fun SpiritLogOverlayDialog(
                             Text(
                                 text = "LOG LEEREN",
                                 style = MaterialTheme.typography.labelMedium.copy(
-                                    color = if (logs.isNotEmpty()) AlertInfraRed else InfraGreenTextMuted,
+                                    color = if (logs.isNotEmpty()) AlertInfraRed else InfraGreenTextPrimaryVariant,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -302,14 +302,14 @@ fun SpiritLogOverlayDialog(
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = null,
-                                tint = if (filteredLogs.isNotEmpty()) InfraGreenPrimary else InfraGreenTextMuted,
+                                tint = if (filteredLogs.isNotEmpty()) InfraGreenPrimary else InfraGreenTextPrimaryVariant,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "EXPORTIEREN",
                                 style = MaterialTheme.typography.labelMedium.copy(
-                                    color = if (filteredLogs.isNotEmpty()) InfraGreenPrimary else InfraGreenTextMuted,
+                                    color = if (filteredLogs.isNotEmpty()) InfraGreenPrimary else InfraGreenTextPrimaryVariant,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold
                                 )

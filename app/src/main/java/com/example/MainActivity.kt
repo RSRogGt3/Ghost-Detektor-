@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
@@ -68,11 +70,13 @@ import com.example.ui.screens.FilterSettingsScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.ScannerScreen
 import com.example.ui.screens.SpiritBoxScreen
+import com.example.ui.screens.LexiconScreen
+import com.example.ui.screens.MissionsScreen
 import com.example.ui.theme.GhostDetectorTheme
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.viewmodel.GhostViewModel
 
 enum class GhostNavDestination(
@@ -82,12 +86,16 @@ enum class GhostNavDestination(
     SCANNER(Icons.Default.Radar, "nav_scanner"),
     SPIRIT_BOX(Icons.Default.RecordVoiceOver, "nav_spirit_box"),
     HISTORY(Icons.Default.History, "nav_history"),
+    LEXICON(Icons.Default.MenuBook, "nav_lexicon"),
+    MISSIONS(Icons.Default.EmojiEvents, "nav_missions"),
     SETTINGS(Icons.Default.Tune, "nav_settings");
 
     fun getTitle(lang: AppLanguage): String = when (this) {
         SCANNER -> UiStrings.getNavScanner(lang)
         SPIRIT_BOX -> UiStrings.getNavSpiritBox(lang)
         HISTORY -> UiStrings.getNavHistory(lang)
+        LEXICON -> "LEXIKON"
+        MISSIONS -> "MISSIONEN"
         SETTINGS -> UiStrings.getNavSettings(lang)
     }
 }
@@ -99,7 +107,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            GhostDetectorTheme {
+            GhostDetectorTheme(viewModel = viewModel) {
                 GhostAppMainContent()
             }
         }
@@ -190,8 +198,8 @@ fun GhostAppMainContent(
                                 selectedIconColor = Color.Black,
                                 selectedTextColor = InfraGreenPrimary,
                                 indicatorColor = InfraGreenPrimary,
-                                unselectedIconColor = InfraGreenTextMuted,
-                                unselectedTextColor = InfraGreenTextMuted
+                                unselectedIconColor = InfraGreenTextPrimaryVariant,
+                                unselectedTextColor = InfraGreenTextPrimaryVariant
                             ),
                             modifier = Modifier.testTag(dest.testTag)
                         )
@@ -211,6 +219,8 @@ fun GhostAppMainContent(
                 GhostNavDestination.SCANNER -> ScannerScreen(viewModel = viewModel)
                 GhostNavDestination.SPIRIT_BOX -> SpiritBoxScreen(viewModel = viewModel)
                 GhostNavDestination.HISTORY -> HistoryScreen(viewModel = viewModel)
+                GhostNavDestination.LEXICON -> LexiconScreen(viewModel = viewModel)
+                GhostNavDestination.MISSIONS -> MissionsScreen(viewModel = viewModel)
                 GhostNavDestination.SETTINGS -> FilterSettingsScreen(viewModel = viewModel)
             }
 

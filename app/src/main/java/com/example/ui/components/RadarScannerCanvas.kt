@@ -188,50 +188,56 @@ fun RadarScannerCanvas(
             drawContext.canvas.nativeCanvas.drawText("O", center.x + maxRadius - 24f, center.y + 10f, paint)
             drawContext.canvas.nativeCanvas.drawText("W", center.x - maxRadius + 24f, center.y + 10f, paint)
 
-            // Rotating Sweep Cone
+            // 6 Rotating Light Cones (6 Lichtkegel)
             if (isScanning && !isLiberating) {
-                val sweepAngleDegrees = rotationAnim.value
-                val sweepRad = Math.toRadians(sweepAngleDegrees.toDouble())
+                val baseSweepDegrees = rotationAnim.value
+                val coneCount = 6
 
-                val sweepPath = Path().apply {
-                    moveTo(center.x, center.y)
-                    arcTo(
-                        rect = androidx.compose.ui.geometry.Rect(
-                            center.x - maxRadius,
-                            center.y - maxRadius,
-                            center.x + maxRadius,
-                            center.y + maxRadius
-                        ),
-                        startAngleDegrees = sweepAngleDegrees - 45f,
-                        sweepAngleDegrees = 45f,
-                        forceMoveTo = false
+                for (k in 0 until coneCount) {
+                    val coneAngle = baseSweepDegrees + k * (360f / coneCount)
+                    val coneRad = Math.toRadians(coneAngle.toDouble())
+
+                    val conePath = Path().apply {
+                        moveTo(center.x, center.y)
+                        arcTo(
+                            rect = androidx.compose.ui.geometry.Rect(
+                                center.x - maxRadius,
+                                center.y - maxRadius,
+                                center.x + maxRadius,
+                                center.y + maxRadius
+                            ),
+                            startAngleDegrees = coneAngle - 25f,
+                            sweepAngleDegrees = 25f,
+                            forceMoveTo = false
+                        )
+                        lineTo(center.x, center.y)
+                        close()
+                    }
+
+                    val coneAlpha = if (k == 0) 0.65f else 0.40f
+                    drawPath(
+                        path = conePath,
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = coneAlpha),
+                                primaryColor.copy(alpha = coneAlpha * 0.3f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = maxRadius
+                        )
                     )
-                    lineTo(center.x, center.y)
-                    close()
+
+                    // Leading beam line for each of the 6 light cones
+                    val beamX = center.x + maxRadius * cos(coneRad).toFloat()
+                    val beamY = center.y + maxRadius * sin(coneRad).toFloat()
+                    drawLine(
+                        color = accentColor,
+                        start = center,
+                        end = Offset(beamX, beamY),
+                        strokeWidth = if (k == 0) 2.5.dp.toPx() else 1.8.dp.toPx()
+                    )
                 }
-
-                drawPath(
-                    path = sweepPath,
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            primaryColor.copy(alpha = 0.6f),
-                            primaryColor.copy(alpha = 0.15f),
-                            Color.Transparent
-                        ),
-                        center = center,
-                        radius = maxRadius
-                    )
-                )
-
-                // Leading line beam
-                val beamX = center.x + maxRadius * cos(sweepRad).toFloat()
-                val beamY = center.y + maxRadius * sin(sweepRad).toFloat()
-                drawLine(
-                    color = accentColor,
-                    start = center,
-                    end = Offset(beamX, beamY),
-                    strokeWidth = 2.5.dp.toPx()
-                )
             }
 
             // Expanding Liberation Burst Wave when freeing spirits

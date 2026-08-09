@@ -65,7 +65,7 @@ import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
 import com.example.ui.theme.InfraGreenSurfaceVariant
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.theme.InfraGreenTextPrimary
 import com.example.ui.viewmodel.GhostViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -98,6 +98,9 @@ fun SpiritBoxScreen(
     val currentFreq by viewModel.frequencyKhz.collectAsStateWithLifecycle()
     val sensorEmf by viewModel.sensorManager.sensorEmfStrength.collectAsStateWithLifecycle()
     val sensorMotion by viewModel.sensorManager.motionIntensity.collectAsStateWithLifecycle()
+    var isRecordingEvp by remember { mutableStateOf(false) }
+    var showEvpResult by remember { mutableStateOf(false) }
+    val evpResultPhrase = "Geister-Stimme: Lasst mich in Frieden..."
 
     var inputQuestion by remember { mutableStateOf("") }
     
@@ -186,7 +189,7 @@ fun SpiritBoxScreen(
                     Text(
                         text = if (isSpeaking) "SPRECHT..." else "BEREIT",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (isSpeaking) Color.Black else InfraGreenTextMuted,
+                            color = if (isSpeaking) Color.Black else InfraGreenTextPrimaryVariant,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
                         )
@@ -229,7 +232,7 @@ fun SpiritBoxScreen(
                                 Text(
                                     text = "Zugriff für echte Audio-Analysen erforderlich",
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextMuted,
+                                        color = InfraGreenTextPrimaryVariant,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 11.sp
                                     )
@@ -272,7 +275,7 @@ fun SpiritBoxScreen(
                         Text(
                             text = "SPEKTRAL-AUDIO WELLENFORM (TTS)",
                             style = MaterialTheme.typography.labelSmall.copy(
-                                color = InfraGreenTextMuted,
+                                color = InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace
                             )
                         )
@@ -319,7 +322,7 @@ fun SpiritBoxScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = null,
-                                tint = if (isRealtimeSweepActive) InfraGreenPrimary else InfraGreenTextMuted,
+                                tint = if (isRealtimeSweepActive) InfraGreenPrimary else InfraGreenTextPrimaryVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -335,7 +338,7 @@ fun SpiritBoxScreen(
                                 Text(
                                     text = "${String.format(java.util.Locale.US, "%.1f", currentFreq)} MHz • Rauschen: ${realtimeSweepSpeedMs}ms",
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextMuted,
+                                        color = InfraGreenTextPrimaryVariant,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 11.sp
                                     )
@@ -366,7 +369,7 @@ fun SpiritBoxScreen(
                             Text(
                                 text = "SWEEP-GESCHWINDIGKEIT:",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = InfraGreenTextMuted,
+                                    color = InfraGreenTextPrimaryVariant,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp
                                 )
@@ -470,7 +473,7 @@ fun SpiritBoxScreen(
                                 Text(
                                     text = "MIKROFON PEGGEL (DB):",
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color = InfraGreenTextMuted,
+                                        color = InfraGreenTextPrimaryVariant,
                                         fontFamily = FontFamily.Monospace,
                                         fontSize = 10.sp
                                     )
@@ -526,6 +529,42 @@ fun SpiritBoxScreen(
             }
 
             // Sensor-Based TTS Phrase Generator Control Card
+            // EVP Recorder Widget
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth().testTag("evp_recorder_card")
+            ) {
+                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = InfraGreenPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("EVP-REKORDER", style = MaterialTheme.typography.titleSmall.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                    }
+                    Text("Nimmt Umgebungsgeräusche auf und filtert verborgene Stimmen heraus (EVP).", style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontSize = 11.sp))
+                    if (showEvpResult) {
+                        Text("ERFASST: $evpResultPhrase", style = MaterialTheme.typography.bodyMedium.copy(color = com.example.ui.theme.AlertInfraRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                    }
+                    Button(
+                        onClick = {
+                            if (isRecordingEvp) {
+                                isRecordingEvp = false
+                                showEvpResult = true
+                                viewModel.soundManager.playGhostFreedSound()
+                                viewModel.askSpirit("Hast du eine Nachricht hinterlassen?")
+                            } else {
+                                isRecordingEvp = true
+                                showEvpResult = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = if (isRecordingEvp) com.example.ui.theme.AlertInfraRed else InfraGreenSurfaceVariant),
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text(if (isRecordingEvp) "AUFNAHME STOPPEN" else "EVP-AUFNAHME STARTEN", color = if (isRecordingEvp) Color.White else InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
             Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
@@ -568,7 +607,7 @@ fun SpiritBoxScreen(
                     Text(
                         text = UiStrings.getSensorTtsDesc(appLanguage, String.format(java.util.Locale.US, "%.1f", sensorMotion), String.format(java.util.Locale.US, "%.1f", currentFreq)),
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextMuted,
+                            color = InfraGreenTextPrimaryVariant,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp
                         )
@@ -616,7 +655,7 @@ fun SpiritBoxScreen(
                     Text(
                         text = "GEIST BOTSCHAFT (ECHTZEIT):",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = InfraGreenTextMuted,
+                            color = InfraGreenTextPrimaryVariant,
                             fontFamily = FontFamily.Monospace
                         )
                     )
@@ -625,7 +664,7 @@ fun SpiritBoxScreen(
                         Text(
                             text = "Frage: \"$spiritQuestion\"",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = InfraGreenTextMuted,
+                                color = InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace
                             )
                         )
@@ -686,7 +725,7 @@ fun SpiritBoxScreen(
                         Text(
                             text = "Stelle eine Frage unten oder tippe auf 'SENSOR-PHRASE GENERIEREN'...",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = InfraGreenTextMuted,
+                                color = InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace
                             )
                         )
@@ -718,7 +757,7 @@ fun SpiritBoxScreen(
                         Text(
                             text = if (autoSpiritBoxEnabled) "Aktiv: Zufällige Fragen & Sätze alle 10s" else "Inaktiv: Manuell fragen",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = if (autoSpiritBoxEnabled) InfraGreenPrimary else InfraGreenTextMuted,
+                                color = if (autoSpiritBoxEnabled) InfraGreenPrimary else InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 11.sp
                             )
@@ -803,7 +842,7 @@ fun SpiritBoxScreen(
                 Text(
                     text = "SCHNELL-FRAGEN (PRESETS):",
                     style = MaterialTheme.typography.labelSmall.copy(
-                        color = InfraGreenTextMuted,
+                        color = InfraGreenTextPrimaryVariant,
                         fontFamily = FontFamily.Monospace
                     )
                 )
@@ -878,7 +917,7 @@ fun SpiritBoxScreen(
                 OutlinedTextField(
                     value = inputQuestion,
                     onValueChange = { inputQuestion = it },
-                    placeholder = { Text(UiStrings.getQuestionPlaceholder(appLanguage), color = InfraGreenTextMuted) },
+                    placeholder = { Text(UiStrings.getQuestionPlaceholder(appLanguage), color = InfraGreenTextPrimaryVariant) },
                     modifier = Modifier
                         .weight(1f)
                         .testTag("spirit_question_input"),
@@ -946,7 +985,7 @@ fun SpiritBoxScreen(
                     ) {
                         Text(
                             text = UiStrings.getVoicePitchLabel(appLanguage),
-                            style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace)
+                            style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
                         )
                         Text(
                             text = String.format("%.2fx", currentPitch),

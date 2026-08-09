@@ -60,7 +60,7 @@ import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
 import com.example.ui.theme.InfraGreenSurfaceVariant
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.theme.InfraGreenTextPrimary
 
 @Composable
@@ -149,7 +149,7 @@ fun AppSecurityLockOverlay(
             Text(
                 text = if (!isPinSetupDone) "Wählen Sie Ihre persönliche 4-stellige PIN" else "Nur für den Inhaber geschützt",
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = InfraGreenTextMuted,
+                    color = InfraGreenTextPrimaryVariant,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 11.sp
                 )
@@ -373,7 +373,7 @@ fun AppSecurityLockOverlay(
                     Text(
                         text = "Senden Sie einen 6-stelligen Wiederherstellungscode an Ihre hinterlegte E-Mail:",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextMuted,
+                            color = InfraGreenTextPrimaryVariant,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp
                         )
@@ -433,7 +433,7 @@ fun AppSecurityLockOverlay(
                     OutlinedTextField(
                         value = recoveryCodeInput,
                         onValueChange = { if (it.length <= 6) recoveryCodeInput = it },
-                        label = { Text("6-stelligen Code eingeben", color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp) },
+                        label = { Text("6-stelligen Code eingeben", color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace, fontSize = 11.sp) },
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = InfraGreenPrimary,
@@ -521,14 +521,14 @@ private fun KeypadButton(
                 Icon(
                     imageVector = Icons.Default.Backspace,
                     contentDescription = "Löschen",
-                    tint = if (enabled) InfraGreenPrimary else InfraGreenTextMuted,
+                    tint = if (enabled) InfraGreenPrimary else InfraGreenTextPrimaryVariant,
                     modifier = Modifier.size(18.dp)
                 )
             } else {
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium.copy(
-                        color = if (text == "C") AlertInfraRed else if (enabled) InfraGreenPrimary else InfraGreenTextMuted,
+                        color = if (text == "C") AlertInfraRed else if (enabled) InfraGreenPrimary else InfraGreenTextPrimaryVariant,
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp

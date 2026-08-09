@@ -1,0 +1,1 @@
+sed -i '1457i \        }\n    }\n    if (showClearConfirmDialog) {\n        androidx.compose.ui.window.Dialog(onDismissRequest = { showClearConfirmDialog = false }) {' app/src/main/java/com/example/ui/screens/FilterSettingsScreen.kt

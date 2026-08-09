@@ -47,6 +47,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.OutputStreamWriter
+
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -67,14 +71,14 @@ import androidx.compose.ui.unit.sp
 import com.example.data.GhostDetectionEntity
 import com.example.ui.components.GhostDetailDialog
 import com.example.ui.theme.AlertInfraRed
-import com.example.ui.theme.InfraGreenBorder
-import com.example.ui.theme.InfraGreenPrimary
+import com.example.ui.theme.MaterialTheme.colorScheme.outline
+import com.example.ui.theme.MaterialTheme.colorScheme.primary
 import com.example.ui.i18n.AppLanguage
 import com.example.ui.i18n.UiStrings
-import com.example.ui.theme.InfraGreenSurface
-import com.example.ui.theme.InfraGreenSurfaceVariant
-import com.example.ui.theme.InfraGreenTextMuted
-import com.example.ui.theme.InfraGreenTextPrimary
+import com.example.ui.theme.MaterialTheme.colorScheme.surface
+import com.example.ui.theme.MaterialTheme.colorScheme.surfaceVariant
+import com.example.ui.theme.MaterialTheme.colorScheme.onSurfaceVariant
+import com.example.ui.theme.MaterialTheme.colorScheme.onSurface
 import com.example.ui.theme.ThermalAmber
 import com.example.ui.viewmodel.GhostViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -96,6 +100,22 @@ fun HistoryScreen(
     val selectedGhostDetail by viewModel.selectedGhostDetail.collectAsStateWithLifecycle()
 
     var showExportDialog by remember { mutableStateOf(false) }
+    var exportTextToSave by remember { mutableStateOf("") }
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) {
+            try {
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    OutputStreamWriter(outputStream).use { writer ->
+                        writer.write(exportTextToSave)
+                    }
+                }
+                Toast.makeText(context, "Log erfolgreich gespeichert", Toast.LENGTH_SHORT).show()
+                showExportDialog = false
+            } catch (e: Exception) {
+                Toast.makeText(context, "Fehler beim Speichern", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     val historyListState = rememberLazyListState()
 
     val typeFilters = UiStrings.getTypeFilters(appLanguage)
@@ -116,8 +136,8 @@ fun HistoryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(InfraGreenSurface)
-                    .border(1.dp, InfraGreenBorder, RoundedCornerShape(10.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(10.dp))
                     .padding(14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -127,13 +147,13 @@ fun HistoryScreen(
                         Icon(
                             imageVector = Icons.Default.History,
                             contentDescription = null,
-                            tint = InfraGreenPrimary
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = UiStrings.getHistoryHeader(appLanguage),
                             style = MaterialTheme.typography.titleMedium.copy(
-                                color = InfraGreenPrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold
                             )
@@ -142,7 +162,7 @@ fun HistoryScreen(
                     Text(
                         text = UiStrings.getHistoryDbCount(appLanguage, filteredGhosts.size),
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = InfraGreenTextMuted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 9.sp
                         )
@@ -151,7 +171,7 @@ fun HistoryScreen(
 
                 Button(
                     onClick = { showExportDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     modifier = Modifier.testTag("export_events_button")
@@ -186,16 +206,16 @@ fun HistoryScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text(UiStrings.getSearchPlaceholder(appLanguage), color = InfraGreenTextMuted) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = InfraGreenTextMuted) },
+                placeholder = { Text(UiStrings.getSearchPlaceholder(appLanguage), color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("history_search_input"),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = InfraGreenPrimary,
-                    unfocusedBorderColor = InfraGreenBorder,
-                    focusedTextColor = InfraGreenTextPrimary,
-                    unfocusedTextColor = InfraGreenTextPrimary
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
                 ),
                 singleLine = true
             )
@@ -215,15 +235,15 @@ fun HistoryScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) InfraGreenPrimary else InfraGreenSurface)
-                                .border(1.dp, if (isSelected) InfraGreenPrimary else InfraGreenBorder, RoundedCornerShape(8.dp))
+                                .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                                .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                                 .clickable { viewModel.setSelectedTypeFilter(type) }
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             Text(
                                 text = type.uppercase(),
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (isSelected) Color.Black else InfraGreenTextPrimary,
+                                    color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
@@ -237,13 +257,28 @@ fun HistoryScreen(
                     onClick = { viewModel.setFavoritesOnlyFilter(!favoritesOnly) },
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (favoritesOnly) AlertInfraRed.copy(alpha = 0.2f) else InfraGreenSurface)
-                        .border(1.dp, if (favoritesOnly) AlertInfraRed else InfraGreenBorder, RoundedCornerShape(8.dp))
+                        .background(if (favoritesOnly) AlertInfraRed.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface)
+                        .border(1.dp, if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                 ) {
                     Icon(
                         imageVector = if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Favoriten Filter",
-                        tint = if (favoritesOnly) AlertInfraRed else InfraGreenTextMuted
+                        tint = if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Favorite all captured Button
+                IconButton(
+                    onClick = { viewModel.favoriteAllCapturedGhosts() },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "Alle Gefangenen herzen",
+                        tint = AlertInfraRed
                     )
                 }
             }
@@ -255,8 +290,8 @@ fun HistoryScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(InfraGreenSurface)
-                        .border(1.dp, InfraGreenBorder, RoundedCornerShape(12.dp)),
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(
@@ -266,13 +301,13 @@ fun HistoryScreen(
                         Icon(
                             imageVector = Icons.Default.History,
                             contentDescription = null,
-                            tint = InfraGreenTextMuted,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.height(48.dp).width(48.dp)
                         )
                         Text(
                             text = "Keine Funde in dieser Kategorie.",
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                color = InfraGreenTextMuted,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontFamily = FontFamily.Monospace
                             )
                         )
@@ -304,8 +339,8 @@ fun HistoryScreen(
                     Spacer(modifier = Modifier.width(6.dp))
                     com.example.ui.components.VerticalScrollbarForLazyList(
                         state = historyListState,
-                        color = InfraGreenPrimary,
-                        trackColor = InfraGreenBorder,
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.outline,
                         width = 6.dp
                     )
                 }
@@ -366,19 +401,19 @@ fun HistoryScreen(
 
         AlertDialog(
             onDismissRequest = { showExportDialog = false },
-            containerColor = InfraGreenSurface,
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.FileDownload,
                         contentDescription = null,
-                        tint = InfraGreenPrimary
+                        tint = MaterialTheme.colorScheme.primary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "ROOM DB EXPORT",
                         style = MaterialTheme.typography.titleMedium.copy(
-                            color = InfraGreenPrimary,
+                            color = MaterialTheme.colorScheme.primary,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
                         )
@@ -392,7 +427,7 @@ fun HistoryScreen(
                     Text(
                         text = "Lesbares Text-Protokoll der gespeicherten Geister-Ereignisse:",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextMuted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp
                         )
@@ -405,7 +440,7 @@ fun HistoryScreen(
                             .height(200.dp)
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color.Black)
-                            .border(1.dp, InfraGreenBorder, RoundedCornerShape(8.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                             .padding(10.dp)
                     ) {
                         Box(
@@ -417,7 +452,7 @@ fun HistoryScreen(
                             Text(
                                 text = summaryText,
                                 style = MaterialTheme.typography.bodySmall.copy(
-                                    color = InfraGreenTextPrimary,
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 10.sp
                                 )
@@ -427,8 +462,8 @@ fun HistoryScreen(
                         Spacer(modifier = Modifier.width(4.dp))
                         com.example.ui.components.VerticalScrollbarForScrollState(
                             state = exportScrollState,
-                            color = InfraGreenPrimary,
-                            trackColor = InfraGreenBorder,
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.outline,
                             width = 6.dp
                         )
                     }
@@ -445,7 +480,7 @@ fun HistoryScreen(
                         context.startActivity(Intent.createChooser(shareIntent, "Protokoll teilen"))
                         showExportDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                     shape = RoundedCornerShape(6.dp)
                 ) {
                     Icon(
@@ -460,6 +495,21 @@ fun HistoryScreen(
             },
             dismissButton = {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            exportTextToSave = summaryText
+                            exportLauncher.launch("ghost_log.txt")
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Als .txt Speichern", color = MaterialTheme.colorScheme.primary, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                    }
                     TextButton(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -479,7 +529,7 @@ fun HistoryScreen(
                     }
 
                     TextButton(onClick = { showExportDialog = false }) {
-                        Text(UiStrings.getCloseBtn(appLanguage), color = InfraGreenTextMuted, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                        Text(UiStrings.getCloseBtn(appLanguage), color = MaterialTheme.colorScheme.onSurfaceVariant, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
                     }
                 }
             }
@@ -502,7 +552,7 @@ fun GhostDiscoveryCard(
         try {
             Color(android.graphics.Color.parseColor(ghost.spectralColorHex))
         } catch (_: Exception) {
-            InfraGreenPrimary
+            MaterialTheme.colorScheme.primary
         }
     }
 
@@ -512,7 +562,7 @@ fun GhostDiscoveryCard(
             .clip(RoundedCornerShape(12.dp))
             .clickable { onClick() }
             .testTag("ghost_card_${ghost.id}"),
-        colors = CardDefaults.cardColors(containerColor = InfraGreenSurfaceVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         border = CardDefaults.outlinedCardBorder(enabled = true)
     ) {
         Row(
@@ -542,7 +592,7 @@ fun GhostDiscoveryCard(
                     Text(
                         text = ghost.name,
                         style = MaterialTheme.typography.titleSmall.copy(
-                            color = InfraGreenTextPrimary,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
                         )
@@ -565,7 +615,7 @@ fun GhostDiscoveryCard(
                     Text(
                         text = "${ghost.type.uppercase()} • ${ghost.locationName}",
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = if (ghost.type.contains("ROTER PUNKT") || ghost.dangerLevel >= 4) AlertInfraRed else InfraGreenTextMuted,
+                            color = if (ghost.type.contains("ROTER PUNKT") || ghost.dangerLevel >= 4) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 11.sp,
                             fontWeight = if (ghost.dangerLevel >= 4) FontWeight.Bold else FontWeight.Normal
@@ -575,7 +625,7 @@ fun GhostDiscoveryCard(
                     Text(
                         text = dateStr,
                         style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextMuted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontFamily = FontFamily.Monospace,
                             fontSize = 10.sp
                         )
@@ -588,7 +638,7 @@ fun GhostDiscoveryCard(
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = InfraGreenTextPrimary.copy(alpha = 0.8f),
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
                             fontFamily = FontFamily.Monospace,
                             fontSize = 9.5.sp
                         )
@@ -600,14 +650,14 @@ fun GhostDiscoveryCard(
                 Icon(
                     imageVector = if (ghost.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = "Favorit toggle",
-                    tint = if (ghost.isFavorite) AlertInfraRed else InfraGreenTextMuted
+                    tint = if (ghost.isFavorite) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = "Detail ansehen",
-                tint = InfraGreenTextMuted
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

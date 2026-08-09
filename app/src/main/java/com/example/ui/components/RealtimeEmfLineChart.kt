@@ -51,7 +51,7 @@ import com.example.ui.theme.AlertInfraRed
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
-import com.example.ui.theme.InfraGreenTextMuted
+import com.example.ui.theme.InfraGreenTextPrimaryVariant
 import com.example.ui.theme.ThermalAmber
 
 @Composable
@@ -82,7 +82,7 @@ fun RealtimeEmfLineChart(
     // Calculation of metrics (Peak & Avg)
     val peakValue = dataPoints.maxOrNull() ?: currentEmf
     val avgValue = if (dataPoints.isNotEmpty()) dataPoints.average().toFloat() else currentEmf
-    var isMinimized by remember { mutableStateOf(false) }
+    var isMinimized by remember { mutableStateOf(true) }
 
     Box(
         modifier = modifier
@@ -114,7 +114,7 @@ fun RealtimeEmfLineChart(
                     Text(
                         text = "MAGNETFELD SCHWANKUNGEN (D3 LIVE)",
                         style = MaterialTheme.typography.labelMedium.copy(
-                            color = InfraGreenTextMuted,
+                            color = InfraGreenTextPrimaryVariant,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.1.sp
@@ -131,7 +131,7 @@ fun RealtimeEmfLineChart(
                         Text(
                             text = "AVG: ",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = InfraGreenTextMuted,
+                                color = InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 10.sp
                             )
@@ -152,7 +152,7 @@ fun RealtimeEmfLineChart(
                         Text(
                             text = "MAX: ",
                             style = MaterialTheme.typography.bodySmall.copy(
-                                color = InfraGreenTextMuted,
+                                color = InfraGreenTextPrimaryVariant,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 10.sp
                             )
@@ -327,7 +327,7 @@ fun RealtimeEmfLineChart(
                 Text(
                     text = "◀ FREQUENZVERLAUF 30S",
                     style = MaterialTheme.typography.bodySmall.copy(
-                        color = InfraGreenTextMuted,
+                        color = InfraGreenTextPrimaryVariant,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 9.sp
                     )

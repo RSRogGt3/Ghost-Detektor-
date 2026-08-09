@@ -91,7 +91,7 @@ fun MagnetFieldAndShieldCard(
 ) {
     var noteText by remember { mutableStateOf("") }
     var selectedSourceTag by remember { mutableStateOf("Fernseher / PC-Monitor Störung") }
-    var isMinimized by remember { mutableStateOf(false) }
+    var isMinimized by remember { mutableStateOf(true) }
 
     val primaryColor = filterMode.primaryColor
     val timeFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }

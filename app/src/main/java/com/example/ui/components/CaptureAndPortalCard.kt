@@ -59,7 +59,7 @@ fun CaptureAndPortalCard(
     onSpawnThreat: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isMinimized by remember { mutableStateOf(false) }
+    var isMinimized by remember { mutableStateOf(true) }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF090E11)),
