@@ -126,6 +126,11 @@ fun ScannerScreen(
     val isClosingDimension by viewModel.isClosingDimension.collectAsStateWithLifecycle()
     val isCapturingEntity by viewModel.isCapturingEntity.collectAsStateWithLifecycle()
     val demonVampireCount by viewModel.demonVampireCount.collectAsStateWithLifecycle()
+    val activeDimension by viewModel.activeDimensionPlane.collectAsStateWithLifecycle()
+    val activeSigil by viewModel.activeSigil.collectAsStateWithLifecycle()
+    val sigilTimerSeconds by viewModel.sigilTimerSeconds.collectAsStateWithLifecycle()
+
+    var showSigilForgeDialog by remember { mutableStateOf(false) }
     val hasHighDemonVampireConcentration by viewModel.hasHighDemonVampireConcentration.collectAsStateWithLifecycle()
 
     val isMagnetShieldActive by viewModel.isMagnetShieldActive.collectAsStateWithLifecycle()
@@ -560,10 +565,14 @@ fun ScannerScreen(
                 isClosingDimension = isClosingDimension,
                 isCapturingEntity = isCapturingEntity,
                 primaryColor = filterMode.primaryColor,
+                activeSigil = activeSigil,
+                sigilTimerSeconds = sigilTimerSeconds,
+                activeDimension = activeDimension,
                 onCloseDimension = { viewModel.closeDimensionRift() },
                 onSpawnDimension = { viewModel.spawnDimensionRift() },
                 onCaptureEntity = { viewModel.captureEntity() },
-                onSpawnThreat = { viewModel.spawnDemonOrVampire() }
+                onSpawnThreat = { viewModel.spawnDemonOrVampire() },
+                onOpenSigilForge = { showSigilForgeDialog = true }
             )
 
             // Real-Time Neon Green Line Chart for Magnetic Field Fluctuations
@@ -900,6 +909,13 @@ fun ScannerScreen(
                         }
                     }
                 }
+            }
+            // Dimension & Sigil Forge Dialog Overlay
+            if (showSigilForgeDialog) {
+                com.example.ui.components.DimensionSigilDialog(
+                    viewModel = viewModel,
+                    onDismiss = { showSigilForgeDialog = false }
+                )
             }
         }
     }

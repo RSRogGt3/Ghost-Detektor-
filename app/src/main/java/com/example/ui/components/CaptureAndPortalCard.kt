@@ -11,8 +11,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +45,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.DimensionPlane
+import com.example.data.SigilType
 
 @Composable
 fun CaptureAndPortalCard(
@@ -53,13 +55,17 @@ fun CaptureAndPortalCard(
     isClosingDimension: Boolean,
     isCapturingEntity: Boolean,
     primaryColor: Color,
+    activeSigil: SigilType? = null,
+    sigilTimerSeconds: Int = 0,
+    activeDimension: DimensionPlane = DimensionPlane.MORTAL_PRIME,
     onCloseDimension: () -> Unit,
     onSpawnDimension: () -> Unit,
     onCaptureEntity: () -> Unit,
     onSpawnThreat: () -> Unit,
+    onOpenSigilForge: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    var isMinimized by remember { mutableStateOf(true) }
+    var isMinimized by remember { mutableStateOf(false) }
 
     Card(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF090E11)),
@@ -89,15 +95,25 @@ fun CaptureAndPortalCard(
                         tint = primaryColor
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "DIMENSIONEN & DÄMONEN-SIEGEL",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = primaryColor,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                    Column {
+                        Text(
+                            text = "DIMENSIONEN & DÄMONEN-SIEGEL",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = primaryColor,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
                         )
-                    )
+                        Text(
+                            text = "Ebene: ${activeDimension.codeName} • ${activeDimension.frequencyHz} Hz",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.LightGray,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp
+                            )
+                        )
+                    }
                 }
 
                 IconButton(
@@ -114,6 +130,72 @@ fun CaptureAndPortalCard(
             }
 
             if (!isMinimized) {
+                // Active Sigil Status Banner
+                if (activeSigil != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1D17)),
+                        border = BorderStroke(1.dp, Color(activeSigil.colorHex)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = activeSigil.symbol, fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "AKTIVES SIEGEL: ${activeSigil.title}",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color(activeSigil.colorHex),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                                Text(
+                                    text = "Dauer: ${sigilTimerSeconds}s verbleibend • ${activeSigil.purpose}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = Color.LightGray,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Main Interactive Sigil Forge Launch Button
+                Button(
+                    onClick = onOpenSigilForge,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF00E5FF),
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .testTag("open_sigil_forge_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AutoAwesome,
+                        contentDescription = "Sigel-Schmiede",
+                        tint = Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "🔮 SIGEL-SCHMIEDE & DIMENSIONEN ÖFFNEN",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Color.Black
+                        )
+                    )
+                }
+
                 // 1. Dimension Portal Control Box
                 BoxPortalControl(
                     activeRiftsCount = activeRiftsCount,
@@ -315,7 +397,7 @@ private fun BoxTrapControl(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (isCapturingEntity) "BANEN..." else "FANGEN",
+                    text = if (isCapturingEntity) "BANNT..." else "FANGEN",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace

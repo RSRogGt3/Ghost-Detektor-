@@ -1,5 +1,9 @@
 package com.example.ui.viewmodel
 
+import com.example.data.DimensionPlane
+import com.example.data.SigilType
+import kotlinx.coroutines.flow.map
+
 import android.app.Application
 import android.os.Build
 import android.os.VibrationEffect
@@ -126,6 +130,24 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _capturedCount = MutableStateFlow(0)
     val capturedCount: StateFlow<Int> = _capturedCount.asStateFlow()
+
+    private val _activeDimensionPlane = MutableStateFlow(com.example.data.DimensionPlane.MORTAL_PRIME)
+    val activeDimensionPlane: StateFlow<com.example.data.DimensionPlane> = _activeDimensionPlane.asStateFlow()
+
+    private val _activeSigil = MutableStateFlow<com.example.data.SigilType?>(null)
+    val activeSigil: StateFlow<com.example.data.SigilType?> = _activeSigil.asStateFlow()
+
+    private val _sigilTimerSeconds = MutableStateFlow(0)
+    val sigilTimerSeconds: StateFlow<Int> = _sigilTimerSeconds.asStateFlow()
+
+    private val _isCastingSigilRitual = MutableStateFlow(false)
+    val isCastingSigilRitual: StateFlow<Boolean> = _isCastingSigilRitual.asStateFlow()
+
+    private var sigilTimerJob: Job? = null
+
+    val activeRiftsCount: StateFlow<Int> = _radarBlips.map { blips ->
+        blips.count { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private val _isClosingDimension = MutableStateFlow(false)
     val isClosingDimension: StateFlow<Boolean> = _isClosingDimension.asStateFlow()
@@ -1437,6 +1459,119 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             delay(1800)
             _isClosingDimension.value = false
         }
+    }
+
+    fun switchDimensionPlane(plane: com.example.data.DimensionPlane) {
+        if (_activeDimensionPlane.value == plane) return
+        _activeDimensionPlane.value = plane
+        if (_audioFeedbackEnabled.value) {
+            soundManager.playRadioStaticSweep()
+            spiritTtsManager.speakSpiritBoxAudio(
+                "Frequenz eingestellt auf ${plane.title}.",
+                emfLevel = 6.0f,
+                dangerLevel = 2,
+                soundManager = soundManager,
+                isSystemAnnouncement = true
+            )
+        }
+        triggerVibrationWaveform(longArrayOf(0, 50, 50, 100))
+        _liberatedBannerMessage.value = "🌀 DIMENSION GEWECHSELT: Einstimmung auf ${plane.codeName} (${plane.frequencyHz} Hz)"
+    }
+
+    fun castSigil(sigil: com.example.data.SigilType) {
+        if (_isCastingSigilRitual.value) return
+        _isCastingSigilRitual.value = true
+
+        viewModelScope.launch {
+            triggerVibrationWaveform(longArrayOf(0, 100, 50, 200, 100, 300, 150, 400))
+            if (_audioFeedbackEnabled.value) {
+                when (sigil) {
+                    com.example.data.SigilType.DEMON_BANISHING -> soundManager.playThreatAlert()
+                    com.example.data.SigilType.DIMENSION_ANCHOR -> soundManager.playGhostFreedSound()
+                    com.example.data.SigilType.ARCHANGEL_SHIELD -> soundManager.playStaticPulse()
+                    com.example.data.SigilType.LIGHT_HARMONY -> soundManager.playGhostFreedSound()
+                    com.example.data.SigilType.QUANTUM_STABILIZER -> soundManager.playRadioStaticSweep()
+                }
+                spiritTtsManager.speakSpiritBoxAudio(
+                    "Ritual-Siegel ${sigil.title} erfolgreich manifestiert.",
+                    emfLevel = 9.5f,
+                    dangerLevel = 1,
+                    soundManager = soundManager,
+                    isSystemAnnouncement = true
+                )
+            }
+
+            // Functional ritual effects based on Sigil Type
+            when (sigil) {
+                com.example.data.SigilType.DEMON_BANISHING -> {
+                    val threatBlips = _radarBlips.value.filter {
+                        it.category == com.example.ui.components.EntityCategory.DEMON ||
+                        it.category == com.example.ui.components.EntityCategory.VAMPIRE
+                    }
+                    if (threatBlips.isNotEmpty()) {
+                        threatBlips.forEach { captureEntity(it) }
+                    } else {
+                        captureEntity()
+                    }
+                }
+                com.example.data.SigilType.DIMENSION_ANCHOR -> {
+                    val rifts = _radarBlips.value.filter {
+                        it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT
+                    }
+                    if (rifts.isNotEmpty()) {
+                        rifts.forEach { closeDimensionRift(it) }
+                    } else {
+                        closeDimensionRift()
+                    }
+                }
+                com.example.data.SigilType.ARCHANGEL_SHIELD -> {
+                    _isEmfSuppressionActive.value = true
+                    _isMagnetShieldActive.value = true
+                }
+                com.example.data.SigilType.LIGHT_HARMONY -> {
+                    _radarBlips.value = emptyList()
+                    _liberatedBannerMessage.value = "🕊️ LICHT-HARMONIE: Alle Radar-Anomalien wurden harmonisiert!"
+                }
+                com.example.data.SigilType.QUANTUM_STABILIZER -> {
+                    _dangerLevel.value = (_dangerLevel.value - 2).coerceAtLeast(1)
+                }
+            }
+
+            val ritualEntity = GhostDetectionEntity(
+                name = "Manifestiertes Siegel: ${sigil.title}",
+                type = "RITUAL-SIEGEL (${sigil.title})",
+                emfLevel = 9.9f,
+                frequencyKhz = 108.0f,
+                dangerLevel = 1,
+                locationName = "Dimensions-Schmiede Sanctum",
+                timestamp = System.currentTimeMillis(),
+                notes = "Siegel-Wirkung aktiviert (${sigil.purpose}). Verbleibende Dauer: ${sigil.durationSeconds}s.",
+                spectralColorHex = "#00FFCC",
+                lastWords = "Das Siegel brennt hell und schützt diesen Raum."
+            )
+            repository.insertGhost(ritualEntity)
+
+            _activeSigil.value = sigil
+            _sigilTimerSeconds.value = sigil.durationSeconds
+
+            delay(1500)
+            _isCastingSigilRitual.value = false
+
+            sigilTimerJob?.cancel()
+            sigilTimerJob = viewModelScope.launch {
+                while (_sigilTimerSeconds.value > 0) {
+                    delay(1000)
+                    _sigilTimerSeconds.value -= 1
+                }
+                _activeSigil.value = null
+            }
+        }
+    }
+
+    fun cancelSigil() {
+        sigilTimerJob?.cancel()
+        _activeSigil.value = null
+        _sigilTimerSeconds.value = 0
     }
 
     fun spawnDimensionRift() {
