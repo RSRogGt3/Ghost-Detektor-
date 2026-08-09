@@ -71,14 +71,8 @@ import androidx.compose.ui.unit.sp
 import com.example.data.GhostDetectionEntity
 import com.example.ui.components.GhostDetailDialog
 import com.example.ui.theme.AlertInfraRed
-import com.example.ui.theme.MaterialTheme.colorScheme.outline
-import com.example.ui.theme.MaterialTheme.colorScheme.primary
 import com.example.ui.i18n.AppLanguage
 import com.example.ui.i18n.UiStrings
-import com.example.ui.theme.MaterialTheme.colorScheme.surface
-import com.example.ui.theme.MaterialTheme.colorScheme.surfaceVariant
-import com.example.ui.theme.MaterialTheme.colorScheme.onSurfaceVariant
-import com.example.ui.theme.MaterialTheme.colorScheme.onSurface
 import com.example.ui.theme.ThermalAmber
 import com.example.ui.viewmodel.GhostViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -548,11 +542,12 @@ fun GhostDiscoveryCard(
         sdf.format(Date(ghost.timestamp))
     }
 
-    val parsedColor = remember(ghost.spectralColorHex) {
+    val fallbackColor = MaterialTheme.colorScheme.primary
+    val parsedColor = remember(ghost.spectralColorHex, fallbackColor) {
         try {
             Color(android.graphics.Color.parseColor(ghost.spectralColorHex))
         } catch (_: Exception) {
-            MaterialTheme.colorScheme.primary
+            fallbackColor
         }
     }
 

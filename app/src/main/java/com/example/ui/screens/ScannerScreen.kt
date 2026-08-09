@@ -129,6 +129,9 @@ fun ScannerScreen(
     val hasHighDemonVampireConcentration by viewModel.hasHighDemonVampireConcentration.collectAsStateWithLifecycle()
 
     val isMagnetShieldActive by viewModel.isMagnetShieldActive.collectAsStateWithLifecycle()
+    val isEmfSuppressionActive by viewModel.isEmfSuppressionActive.collectAsStateWithLifecycle()
+    val isSystemSpeechEnabled by viewModel.isSystemSpeechEnabled.collectAsStateWithLifecycle()
+    val isTtsMuted by viewModel.isTtsMuted.collectAsStateWithLifecycle()
     val magnetLogNotes by viewModel.magnetLogNotes.collectAsStateWithLifecycle()
     val autoFilterRotationEnabled by viewModel.autoFilterRotationEnabled.collectAsStateWithLifecycle()
     val autoCaptureLiberateEnabled by viewModel.autoCaptureLiberateEnabled.collectAsStateWithLifecycle()
@@ -481,7 +484,41 @@ fun ScannerScreen(
                         modifier = Modifier.testTag("radar_mute_switch")
                     )
                 }
+
+                // System Speech Switch
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "SPRACHE:",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = filterMode.primaryColor,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    androidx.compose.material3.Switch(
+                        checked = isSystemSpeechEnabled && !isTtsMuted,
+                        onCheckedChange = { viewModel.toggleSystemSpeechEnabled() },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                            checkedThumbColor = Color.Black,
+                            checkedTrackColor = filterMode.primaryColor,
+                            uncheckedThumbColor = filterMode.primaryColor.copy(alpha = 0.5f),
+                            uncheckedTrackColor = Color(0xFF1A1A1A)
+                        ),
+                        modifier = Modifier.testTag("system_speech_switch")
+                    )
+                }
             }
+
+            // EMF Feldstärke Meter Gauge (über Spiritbox platziert)
+            EmfMeter(
+                emfValue = emfLevel,
+                dangerLevel = dangerLevel,
+                frequencyKhz = frequencyKhz,
+                isEmfSuppressed = isEmfSuppressionActive,
+                onToggleEmfSuppression = { viewModel.toggleEmfSuppression() },
+                onNeutralizeEmf = { viewModel.neutralizeEmfSpike() }
+            )
 
             // Spirit Box Live Transcripts & Communications Log History ("Verlauf nach oben verschoben")
             SpiritBoxTranscriptListCard(
@@ -514,13 +551,6 @@ fun ScannerScreen(
                 onToggleAutoCaptureLiberate = { viewModel.toggleAutoCaptureLiberate() },
                 onToggleBackgroundScan247 = { viewModel.toggleBackgroundScan247() },
                 onToggleBatterySaver = { viewModel.toggleBatterySaverEnabled() }
-            )
-
-            // EMF Feldstärke Meter Gauge (unter Geister & Anomalien platziert)
-            EmfMeter(
-                emfValue = emfLevel,
-                dangerLevel = dangerLevel,
-                frequencyKhz = frequencyKhz
             )
 
             // Dimension Portal Closing & Vampire/Demon Containment Trap Panel

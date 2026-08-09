@@ -60,7 +60,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.ui.components.AudioWaveformCanvas
+import com.example.ui.components.EmfMeter
 import com.example.ui.components.SpiritLogOverlayDialog
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.filled.VolumeOff
+import com.example.ui.theme.AlertInfraRed
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
 import com.example.ui.theme.InfraGreenSurface
@@ -96,6 +101,14 @@ fun SpiritBoxScreen(
     val currentEmf by viewModel.emfLevel.collectAsStateWithLifecycle()
     val currentDanger by viewModel.dangerLevel.collectAsStateWithLifecycle()
     val currentFreq by viewModel.frequencyKhz.collectAsStateWithLifecycle()
+    val isEmfSuppressionActive by viewModel.isEmfSuppressionActive.collectAsStateWithLifecycle()
+    val isTtsMuted by viewModel.isTtsMuted.collectAsStateWithLifecycle()
+    val isSystemSpeechEnabled by viewModel.isSystemSpeechEnabled.collectAsStateWithLifecycle()
+    val ttsVolume by viewModel.ttsVolume.collectAsStateWithLifecycle()
+    val ttsPitch by viewModel.ttsPitch.collectAsStateWithLifecycle()
+    val ttsSpeechRate by viewModel.ttsSpeechRate.collectAsStateWithLifecycle()
+    val ttsVoicePersona by viewModel.ttsVoicePersona.collectAsStateWithLifecycle()
+    val vibrationEnabled by viewModel.vibrationEnabled.collectAsStateWithLifecycle()
     val sensorEmf by viewModel.sensorManager.sensorEmfStrength.collectAsStateWithLifecycle()
     val sensorMotion by viewModel.sensorManager.motionIntensity.collectAsStateWithLifecycle()
     var isRecordingEvp by remember { mutableStateOf(false) }
@@ -196,6 +209,17 @@ fun SpiritBoxScreen(
                     )
                 }
             }
+
+            // EMF Feldstärke Meter Gauge (Plaziert über Spirit Box)
+            EmfMeter(
+                emfValue = currentEmf,
+                dangerLevel = currentDanger,
+                frequencyKhz = currentFreq,
+                initiallyMinimized = false,
+                isEmfSuppressed = isEmfSuppressionActive,
+                onToggleEmfSuppression = { viewModel.toggleEmfSuppression() },
+                onNeutralizeEmf = { viewModel.neutralizeEmfSpike() }
+            )
 
             // Microphone Permission Card
             if (!hasMicPermission) {
@@ -300,6 +324,287 @@ fun SpiritBoxScreen(
                         waveColor = InfraGreenPrimary,
                         amplitudeMultiplier = if (isSpeaking || isGenerating) 1.6f else 0.8f
                     )
+                }
+            }
+
+            
+            // Dedicated Spirit Box Voice & Volume Control Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth().testTag("audio_mute_system_voice_card")
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Header Row with Mute Switch
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = if (isTtsMuted || ttsVolume <= 0.01f) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = null,
+                                tint = if (isTtsMuted || ttsVolume <= 0.01f) AlertInfraRed else InfraGreenPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "🎙️ SPIRIT BOX SPRACHAUSGABE & STIMME",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = InfraGreenPrimary,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                Text(
+                                    text = if (isTtsMuted) "STUMM GESCHALTET (MUTED)" else "Lautstärke: ${(ttsVolume * 100).toInt()}% • ${ttsVoicePersona.displayName}",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = InfraGreenTextPrimaryVariant,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { viewModel.toggleTtsMute() },
+                            modifier = Modifier.testTag("toggle_tts_mute_button")
+                        ) {
+                            Icon(
+                                imageVector = if (isTtsMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = "Mute Toggle",
+                                tint = if (isTtsMuted) AlertInfraRed else InfraGreenPrimary
+                            )
+                        }
+                    }
+
+                    // Independent Spirit Box Volume Slider
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "EIGENE SPRACH-LAUTSTÄRKE",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = InfraGreenTextPrimaryVariant,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp
+                                )
+                            )
+                            Text(
+                                text = if (isTtsMuted) "STUMM" else "${(ttsVolume * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isTtsMuted) AlertInfraRed else InfraGreenPrimary,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            )
+                        }
+                        Slider(
+                            value = if (isTtsMuted) 0f else ttsVolume,
+                            onValueChange = {
+                                if (isTtsMuted && it > 0f) {
+                                    viewModel.setTtsMuted(false)
+                                }
+                                viewModel.setTtsVolume(it)
+                            },
+                            valueRange = 0f..1f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = InfraGreenPrimary,
+                                activeTrackColor = InfraGreenPrimary,
+                                inactiveTrackColor = InfraGreenSurfaceVariant
+                            ),
+                            modifier = Modifier.fillMaxWidth().testTag("tts_volume_slider")
+                        )
+                    }
+
+                    // Voice Persona Selector ("Gib ihr mal ne Stimme von dir")
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "STIMMEN-PROFIL (AI & SPEKTRAL):",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = InfraGreenTextPrimaryVariant,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp
+                            )
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            com.example.audio.VoicePersona.values().forEach { persona ->
+                                val isSelected = ttsVoicePersona == persona
+                                Button(
+                                    onClick = { viewModel.setTtsVoicePersona(persona) },
+                                    modifier = Modifier.weight(1f).testTag("persona_chip_${persona.name}"),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (isSelected) InfraGreenPrimary else InfraGreenSurfaceVariant
+                                    ),
+                                    border = BorderStroke(1.dp, if (isSelected) InfraGreenPrimary else InfraGreenBorder),
+                                    shape = RoundedCornerShape(6.dp),
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = when(persona) {
+                                            com.example.audio.VoicePersona.GEMINI_AI -> "🤖 Gemini"
+                                            com.example.audio.VoicePersona.EERIE_PHANTOM -> "👻 Phantom"
+                                            com.example.audio.VoicePersona.DEMONIC_ANOMALY -> "⚡ Dämon"
+                                            com.example.audio.VoicePersona.CYBER_SYNTH -> "👾 Cyber"
+                                        },
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = if (isSelected) Color.Black else InfraGreenTextPrimary,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 10.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Pitch & Rate Fine Tuning Sliders
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "TONHÖHE: ${String.format(java.util.Locale.US, "%.2f", ttsPitch)}x",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = InfraGreenTextPrimaryVariant,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 9.sp
+                                )
+                            )
+                            Slider(
+                                value = ttsPitch,
+                                onValueChange = { viewModel.setTtsPitch(it) },
+                                valueRange = 0.4f..1.6f,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = InfraGreenPrimary,
+                                    activeTrackColor = InfraGreenPrimary
+                                ),
+                                modifier = Modifier.fillMaxWidth().testTag("tts_pitch_slider")
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "TEMPO: ${String.format(java.util.Locale.US, "%.2f", ttsSpeechRate)}x",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = InfraGreenTextPrimaryVariant,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 9.sp
+                                )
+                            )
+                            Slider(
+                                value = ttsSpeechRate,
+                                onValueChange = { viewModel.setTtsSpeechRate(it) },
+                                valueRange = 0.5f..1.5f,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = InfraGreenPrimary,
+                                    activeTrackColor = InfraGreenPrimary
+                                ),
+                                modifier = Modifier.fillMaxWidth().testTag("tts_rate_slider")
+                            )
+                        }
+                    }
+
+                    // Action Buttons (Test Voice & System Voice Protection)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Test Voice Button
+                        Button(
+                            onClick = { viewModel.testSpiritVoice() },
+                            modifier = Modifier.weight(1f).testTag("test_spirit_voice_button"),
+                            colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "🔊 TEST STIMME",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color.Black,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+
+                    // Haptic Vibration Switch Row for Spirit Box Entity Detection
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "📳 HAPTISCHE ENTITÄTEN-VIBRATION",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = InfraGreenTextPrimaryVariant,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp
+                            )
+                        )
+                        androidx.compose.material3.Switch(
+                            checked = vibrationEnabled,
+                            onCheckedChange = { viewModel.toggleVibration() },
+                            colors = androidx.compose.material3.SwitchDefaults.colors(
+                                checkedThumbColor = InfraGreenPrimary,
+                                checkedTrackColor = InfraGreenSurfaceVariant,
+                                uncheckedThumbColor = InfraGreenTextPrimaryVariant,
+                                uncheckedTrackColor = InfraGreenSurface
+                            ),
+                            modifier = Modifier.testTag("spirit_box_vibration_switch")
+                        )
+                    }
+
+                    // System Voice Protection Switch
+                    Button(
+                            onClick = { viewModel.toggleSystemSpeechEnabled() },
+                            modifier = Modifier.weight(1f).testTag("toggle_system_speech_button"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = InfraGreenSurfaceVariant
+                            ),
+                            border = BorderStroke(1.dp, if (isSystemSpeechEnabled) InfraGreenPrimary else InfraGreenBorder),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.RecordVoiceOver,
+                                contentDescription = null,
+                                tint = if (isSystemSpeechEnabled) InfraGreenPrimary else InfraGreenTextPrimaryVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isSystemSpeechEnabled) "📢 SYSTEM: AN" else "🛡️ SYSTEM: AUS",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isSystemSpeechEnabled) InfraGreenPrimary else InfraGreenTextPrimaryVariant,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                    }
                 }
             }
 

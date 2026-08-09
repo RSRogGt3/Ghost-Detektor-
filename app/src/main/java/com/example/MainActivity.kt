@@ -107,8 +107,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
+            val viewModel: GhostViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
             GhostDetectorTheme(viewModel = viewModel) {
-                GhostAppMainContent()
+                GhostAppMainContent(viewModel = viewModel)
             }
         }
     }

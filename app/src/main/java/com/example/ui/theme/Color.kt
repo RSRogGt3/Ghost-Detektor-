@@ -18,3 +18,5 @@ val AlertInfraRed = Color(0xFFFF2244)          // High Threat Anomaly
 val ThermalAmber = Color(0xFFFF9900)           // Thermal Heat Indicator
 val UvViolet = Color(0xFFBB33FF)               // UV Spectrum Mode
 val CyberCyan = Color(0xFF00E5FF)              // EMP Field Mode
+
+val InfraGreenTextMuted = Color(0xFF007733)

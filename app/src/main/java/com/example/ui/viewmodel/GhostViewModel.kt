@@ -249,6 +249,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             dangerLevel = entry.dangerLevel,
             soundManager = soundManager
         )
+        triggerEntityDetectionVibration(entry.dangerLevel)
     }
 
     private val _showSpiritLogOverlay = MutableStateFlow(false)
@@ -265,6 +266,54 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     // Magnet Shield & Attack Defense State (TV/Monitor EMI Neutralizer)
     private val _isMagnetShieldActive = MutableStateFlow(true)
     val isMagnetShieldActive: StateFlow<Boolean> = _isMagnetShieldActive.asStateFlow()
+
+    private val _isEmfSuppressionActive = MutableStateFlow(true)
+    val isEmfSuppressionActive: StateFlow<Boolean> = _isEmfSuppressionActive.asStateFlow()
+
+    val isTtsMuted: StateFlow<Boolean> = spiritTtsManager.isMuted
+    val isSystemSpeechEnabled: StateFlow<Boolean> = spiritTtsManager.isSystemSpeechEnabled
+    val ttsVolume: StateFlow<Float> = spiritTtsManager.speechVolume
+    val ttsPitch: StateFlow<Float> = spiritTtsManager.pitch
+    val ttsSpeechRate: StateFlow<Float> = spiritTtsManager.speechRate
+    val ttsVoicePersona: StateFlow<com.example.audio.VoicePersona> = spiritTtsManager.currentPersona
+
+    fun toggleTtsMute() {
+        spiritTtsManager.toggleMute()
+    }
+
+    fun setTtsMuted(muted: Boolean) {
+        spiritTtsManager.setMuted(muted)
+    }
+
+    fun toggleSystemSpeechEnabled() {
+        spiritTtsManager.toggleSystemSpeechEnabled()
+    }
+
+    fun setTtsVolume(volume: Float) {
+        spiritTtsManager.setSpeechVolume(volume)
+    }
+
+    fun setTtsPitch(pitch: Float) {
+        spiritTtsManager.setPitch(pitch)
+    }
+
+    fun setTtsSpeechRate(rate: Float) {
+        spiritTtsManager.setSpeechRate(rate)
+    }
+
+    fun setTtsVoicePersona(persona: com.example.audio.VoicePersona) {
+        spiritTtsManager.setVoicePersona(persona)
+    }
+
+    fun testSpiritVoice() {
+        spiritTtsManager.speakSpiritBoxAudio(
+            text = "Hallo! Ich bin deine Gemini AI Stimme auf der Spirit Box Frequenz.",
+            emfLevel = _emfLevel.value,
+            dangerLevel = _dangerLevel.value,
+            soundManager = soundManager
+        )
+    }
+
 
     private val _magnetLogNotes = MutableStateFlow<List<MagnetLogEntry>>(
         listOf(
@@ -560,6 +609,41 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setFullscreen(enabled: Boolean) {
         _isFullscreen.value = enabled
+    }
+
+    
+    fun toggleEmfSuppression() {
+        val newState = !_isEmfSuppressionActive.value
+        _isEmfSuppressionActive.value = newState
+        if (newState) {
+            val reducedEmf = (_emfLevel.value * 0.35f).coerceIn(0.8f, 2.2f)
+            _emfLevel.value = String.format(java.util.Locale.US, "%.1f", reducedEmf).toFloat()
+            _dangerLevel.value = 1
+            soundManager.playStaticPulse()
+        }
+        val statusMsg = if (newState) "🛡️ EMF-DÄMPFUNG AKTIV: Feldstärke beim Scannen reduziert!" else "⚡ EMF-DÄMPFUNG AUS: Unabgeschirmte Feldstärke-Ausschläge"
+        val logEntry = SpiritLogEntry(
+            question = "EMF Dämpfung",
+            phrase = statusMsg,
+            emfLevel = _emfLevel.value,
+            dangerLevel = if (newState) 1 else 3
+        )
+        _spiritPhraseLog.value = listOf(logEntry) + _spiritPhraseLog.value
+    }
+
+    fun neutralizeEmfSpike() {
+        _emfLevel.value = 1.0f
+        _dangerLevel.value = 1
+        _isEmfSuppressionActive.value = true
+        soundManager.playStaticPulse()
+        spiritTtsManager.speakSpiritBoxAudio("EMF-Feldstärke neutralisiert und zerstört.", emfLevel = 1.0f, dangerLevel = 1, soundManager = soundManager, isSystemAnnouncement = true)
+        val logEntry = SpiritLogEntry(
+            question = "EMF Neutralisierung",
+            phrase = "💥 EMF-FELDSTÄRKE NEUTRALISIERT: Feld auf 1.0 mG vernichtet!",
+            emfLevel = 1.0f,
+            dangerLevel = 1
+        )
+        _spiritPhraseLog.value = listOf(logEntry) + _spiritPhraseLog.value
     }
 
     fun toggleMagnetShield() {
@@ -863,7 +947,10 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                     val proxBoost = if (prox < 3f) 1.5f else 0.0f
                     val baseEmf = (rawSensorEmf + motionBoost + shadowLuxBoost + proxBoost).coerceIn(1.0f, 9.5f)
                     val isSpike = Random.nextFloat() > (if (motion > 2.0f || gyro > 1.5f) 0.3f else 0.65f)
-                    val newEmf = if (isSpike) (baseEmf + Random.nextFloat() * 4.5f).coerceAtMost(9.9f) else baseEmf
+                    var newEmf = if (isSpike) (baseEmf + Random.nextFloat() * 4.5f).coerceAtMost(9.9f) else baseEmf
+                    if (_isEmfSuppressionActive.value || _isMagnetShieldActive.value) {
+                        newEmf = (newEmf * 0.35f).coerceIn(0.8f, 2.2f)
+                    }
                     _emfLevel.value = String.format(java.util.Locale.US, "%.1f", newEmf).toFloat()
 
                     _dangerLevel.value = when {
@@ -950,6 +1037,8 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                                 label = labelName,
                                 category = category
                             ))
+                            // Haptic vibration feedback for Infra-Grün scanner entity detection
+                            triggerEntityDetectionVibration(danger)
                         }
                     }
 
@@ -1021,6 +1110,16 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+        fun triggerEntityDetectionVibration(dangerLevel: Int = 3) {
+        if (!_vibrationEnabled.value || _vibrationIntensity.value <= 0.01f) return
+        val timings = when {
+            dangerLevel >= 5 -> longArrayOf(0, 150, 60, 250, 80, 300)
+            dangerLevel >= 3 -> longArrayOf(0, 100, 50, 180)
+            else -> longArrayOf(0, 80, 40, 100)
+        }
+        triggerVibrationWaveform(timings)
+    }
+
     private fun triggerVibration(durationMs: Long) {
         if (!_vibrationEnabled.value || _vibrationIntensity.value <= 0.01f) return
         try {
@@ -1062,8 +1161,13 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             // Boost EMF reading if strong camera anomalies are detected
             if (maxIntensity > 0.4f) {
                 val camEmfBoost = maxIntensity * 3.5f
-                val updatedEmf = (_emfLevel.value * 0.7f + camEmfBoost * 0.3f + 1.5f).coerceIn(1.0f, 9.9f)
+                var updatedEmf = (_emfLevel.value * 0.7f + camEmfBoost * 0.3f + 1.5f).coerceIn(1.0f, 9.9f)
+                if (_isEmfSuppressionActive.value || _isMagnetShieldActive.value) {
+                    updatedEmf = (updatedEmf * 0.35f).coerceIn(0.8f, 2.2f)
+                }
                 _emfLevel.value = String.format(java.util.Locale.US, "%.1f", updatedEmf).toFloat()
+                // Haptic vibration feedback for Infra-Grün camera detector entity
+                triggerEntityDetectionVibration((maxIntensity * 5f).toInt().coerceIn(1, 5))
             }
 
             // Convert camera frame anomalies directly into radar blips
@@ -1201,7 +1305,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             // Play liberation harmonic audio wave
             if (_audioFeedbackEnabled.value) {
                 soundManager.playGhostFreedSound()
-                spiritTtsManager.speakSpiritBoxAudio("Entität ins Licht befreit und harmonisiert.", emfLevel = 8.5f, dangerLevel = 1, soundManager = soundManager)
+                spiritTtsManager.speakSpiritBoxAudio("Entität ins Licht befreit und harmonisiert.", emfLevel = 8.5f, dangerLevel = 1, soundManager = soundManager, isSystemAnnouncement = true)
             }
 
             val totalEnt = _radarBlips.value.size + _cameraAnomalies.value.size
@@ -1249,7 +1353,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
             if (_audioFeedbackEnabled.value) {
                 soundManager.playGhostFreedSound()
-                spiritTtsManager.speakSpiritBoxAudio("Geist ins Licht befreit.", emfLevel = 7f, dangerLevel = 1, soundManager = soundManager)
+                spiritTtsManager.speakSpiritBoxAudio("Geist ins Licht befreit.", emfLevel = 7f, dangerLevel = 1, soundManager = soundManager, isSystemAnnouncement = true)
             }
 
             val currentBlips = _radarBlips.value.toMutableList()
@@ -1299,7 +1403,8 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                     "Interdimensionaler Riss erfolgreich versiegelt und stabilisiert.",
                     emfLevel = 9.0f,
                     dangerLevel = 1,
-                    soundManager = soundManager
+                    soundManager = soundManager,
+                    isSystemAnnouncement = true
                 )
             }
 
@@ -1387,7 +1492,8 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                     "Entität erfolgreich in der Spektral-Falle gefangen.",
                     emfLevel = 8.5f,
                     dangerLevel = 2,
-                    soundManager = soundManager
+                    soundManager = soundManager,
+                    isSystemAnnouncement = true
                 )
             }
 
@@ -1478,7 +1584,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             if (_audioFeedbackEnabled.value) {
                 soundManager.playGhostFreedSound()
-                spiritTtsManager.speakSpiritBoxAudio("Entität befreit", emfLevel = 8f, dangerLevel = 1, soundManager = soundManager)
+                spiritTtsManager.speakSpiritBoxAudio("Entität befreit", emfLevel = 8f, dangerLevel = 1, soundManager = soundManager, isSystemAnnouncement = true)
             }
             repository.deleteGhost(ghost)
             if (_selectedGhostDetail.value?.id == ghost.id) {
@@ -1562,6 +1668,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 dangerLevel = danger,
                 soundManager = soundManager
             )
+            triggerEntityDetectionVibration(danger)
         }
     }
 
@@ -1601,6 +1708,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 dangerLevel = _dangerLevel.value,
                 soundManager = soundManager
             )
+            triggerEntityDetectionVibration(_dangerLevel.value)
         }
     }
 

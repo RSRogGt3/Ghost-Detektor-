@@ -88,6 +88,7 @@ fun FilterSettingsScreen(
     modifier: Modifier = Modifier
 ) {
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+    val appThemeColor by viewModel.appThemeColor.collectAsStateWithLifecycle()
     val currentFilterMode by viewModel.currentFilterMode.collectAsStateWithLifecycle()
     val filterIntensity by viewModel.filterIntensity.collectAsStateWithLifecycle()
     val showCrtOverlay by viewModel.showCrtOverlay.collectAsStateWithLifecycle()
@@ -206,6 +207,7 @@ fun FilterSettingsScreen(
             }
 
             // App Security & User Access Protection Card
+            Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
                 modifier = Modifier.fillMaxWidth().testTag("app_security_settings_card")
@@ -485,438 +487,8 @@ fun FilterSettingsScreen(
                 }
             }
 
-            // Background Operation & Battery Saver Card
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth().testTag("background_battery_saver_card")
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                    }
-                }
-            }
-                            Icon(
-                                imageVector = Icons.Default.BatterySaver,
-                                contentDescription = null,
-                                tint = if (isBatterySaverThrottling) Color(0xFFFFCC00) else InfraGreenPrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "HINTERGRUNDBETRIEB & AKKUSPARER",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = InfraGreenPrimary,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-
-                        if (isBatterySaverThrottling) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFFFFCC00).copy(alpha = 0.2f))
-                                    .border(1.dp, Color(0xFFFFCC00), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "⚡ DROSSELUNG AKTIV",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color(0xFFFFCC00),
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 9.sp
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    // 1. 24/7 Background Scan Toggle
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(InfraGreenSurfaceVariant)
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "24/7 HINTERGRUND-SCANNEN",
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = InfraGreenTextPrimary,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            )
-                            Text(
-                                text = if (backgroundScan247Enabled) "Radar-Scans laufen weiter, auch wenn die App minimiert ist" else "Scans pausieren beim Minimieren der App",
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = InfraGreenTextPrimaryVariant,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp
-                                )
-                            )
-                        }
-
-                        Switch(
-                            checked = backgroundScan247Enabled,
-                            onCheckedChange = { viewModel.toggleBackgroundScan247() },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = InfraGreenPrimary,
-                                uncheckedThumbColor = InfraGreenTextPrimaryVariant,
-                                uncheckedTrackColor = InfraGreenSurfaceVariant
-                            )
-                        )
-                    }
-
-                    // 2. Battery Saver Mode Toggle
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(InfraGreenSurfaceVariant)
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = UiStrings.getBatterySaverTitle(appLanguage),
-                                style = MaterialTheme.typography.bodyMedium.copy(
-                                    color = InfraGreenTextPrimary,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            )
-                            Text(
-                                text = UiStrings.getBatterySaverDesc(appLanguage, isBatterySaverThrottling),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    color = if (isBatterySaverThrottling) Color(0xFFFFCC00) else InfraGreenTextPrimaryVariant,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp
-                                )
-                            )
-                        }
-
-                        Switch(
-                            checked = isBatterySaverEnabled,
-                            onCheckedChange = { viewModel.toggleBatterySaverEnabled() },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.Black,
-                                checkedTrackColor = InfraGreenPrimary,
-                                uncheckedThumbColor = InfraGreenTextPrimaryVariant,
-                                uncheckedTrackColor = InfraGreenSurfaceVariant
-                            ),
-                            modifier = Modifier.testTag("settings_battery_saver_switch")
-                        )
-                    }
-                }
-            }
-
-            // System Permissions Control Card
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth().testTag("system_permissions_card")
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = null,
-                            tint = InfraGreenPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "SYSTEM-BERECHTIGUNGEN & SENSOR-STEUERUNG",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = InfraGreenPrimary,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-
-                    // 1. Microphone Permission
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(InfraGreenSurfaceVariant)
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Mic,
-                                contentDescription = null,
-                                tint = if (hasMicPermission) InfraGreenPrimary else AlertInfraRed,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "MIKROFON-ZUGRIFF (AUDIO-EVP)",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = InfraGreenTextPrimary,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
-                                )
-                                Text(
-                                    text = if (hasMicPermission) "Aktiv: Echtzeit Spirit Box Audio-Eingabe" else "Inaktiv: Benötigt für Sprach-Eingabe",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextPrimaryVariant,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 10.sp
-                                    )
-                                )
-                            }
-                        }
-
-                        if (hasMicPermission) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(InfraGreenPrimary.copy(alpha = 0.2f))
-                                    .border(1.dp, InfraGreenPrimary, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = InfraGreenPrimary,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "FREIGEGEBEN",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = InfraGreenPrimary,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp
-                                        )
-                                    )
-                                }
-                            }
-                        } else {
-                            Button(
-                                onClick = { micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
-                                colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = "FREIGEBEN",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color.Black,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    // 2. Camera Permission
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(InfraGreenSurfaceVariant)
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.CameraAlt,
-                                contentDescription = null,
-                                tint = if (hasCameraPermission) InfraGreenPrimary else AlertInfraRed,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "KAMERA-ZUGRIFF (NACHTSICHT)",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = InfraGreenTextPrimary,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
-                                )
-                                Text(
-                                    text = if (hasCameraPermission) "Aktiv: Kamerafeed & Taschenlampe" else "Inaktiv: Benötigt für Video-Scan",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextPrimaryVariant,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 10.sp
-                                    )
-                                )
-                            }
-                        }
-
-                        if (hasCameraPermission) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(InfraGreenPrimary.copy(alpha = 0.2f))
-                                    .border(1.dp, InfraGreenPrimary, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = InfraGreenPrimary,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "FREIGEGEBEN",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = InfraGreenPrimary,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp
-                                        )
-                                    )
-                                }
-                            }
-                        } else {
-                            Button(
-                                onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
-                                colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = "FREIGEBEN",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color.Black,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                            }
-                        }
-                    }
-
-                    // 3. Location Permission
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(InfraGreenSurfaceVariant)
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.LocationOn,
-                                contentDescription = null,
-                                tint = if (hasLocationPermission) InfraGreenPrimary else AlertInfraRed,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Text(
-                                    text = "STANDORT-ZUGRIFF (GPS)",
-                                    style = MaterialTheme.typography.bodyMedium.copy(
-                                        color = InfraGreenTextPrimary,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
-                                )
-                                Text(
-                                    text = if (hasLocationPermission) "Aktiv: Präzise Koordinaten für Funde" else "Inaktiv: Koordinaten-Verortung",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        color = InfraGreenTextPrimaryVariant,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 10.sp
-                                    )
-                                )
-                            }
-                        }
-
-                        if (hasLocationPermission) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(InfraGreenPrimary.copy(alpha = 0.2f))
-                                    .border(1.dp, InfraGreenPrimary, RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = InfraGreenPrimary,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "FREIGEGEBEN",
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = InfraGreenPrimary,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp
-                                        )
-                                    )
-                                }
-                            }
-                        } else {
-                            Button(
-                                onClick = { locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) },
-                                colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary),
-                                shape = RoundedCornerShape(6.dp)
-                            ) {
-                                Text(
-                                    text = "FREIGEBEN",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color.Black,
-                                        fontFamily = FontFamily.Monospace,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
+            // Theme Color Selection Card
+            Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
                 modifier = Modifier.fillMaxWidth()
@@ -945,5 +517,288 @@ fun FilterSettingsScreen(
             }
 
             // Language Selection Card
+            Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = InfraGreenPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("SPRACHE / LANGUAGE", style = MaterialTheme.typography.titleMedium.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(
+                            onClick = { viewModel.setAppLanguage(AppLanguage.GERMAN) },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (appLanguage == AppLanguage.GERMAN) InfraGreenPrimary.copy(alpha = 0.2f) else Color.Transparent
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (appLanguage == AppLanguage.GERMAN) InfraGreenPrimary else InfraGreenBorder)
+                        ) {
+                            Text("DEUTSCH 🇩🇪", color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace)
+                        }
+                        OutlinedButton(
+                            onClick = { viewModel.setAppLanguage(AppLanguage.ENGLISH) },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (appLanguage == AppLanguage.ENGLISH) InfraGreenPrimary.copy(alpha = 0.2f) else Color.Transparent
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, if (appLanguage == AppLanguage.ENGLISH) InfraGreenPrimary else InfraGreenBorder)
+                        ) {
+                            Text("ENGLISH 🇬🇧", color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace)
+                        }
+                    }
+                }
+            }
+
+            // Security PIN / Lock Settings Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Security, contentDescription = null, tint = InfraGreenPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("SICHERHEIT & PIN-SCHUTZ", style = MaterialTheme.typography.titleMedium.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("App-Sperre aktivieren", style = MaterialTheme.typography.bodyMedium.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace))
+                            Text(if (isSecurityEnabled) "PIN-Schutz ist aktiv" else "Ohne PIN aufrufbar", style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace, fontSize = 11.sp))
+                        }
+                        Switch(
+                            checked = isSecurityEnabled,
+                            onCheckedChange = { viewModel.setSecurityEnabled(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = InfraGreenPrimary)
+                        )
+                    }
+                    if (isSecurityEnabled) {
+                        Button(
+                            onClick = { showChangePinDialog = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary.copy(alpha = 0.2f)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, InfraGreenPrimary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.VpnKey, contentDescription = null, tint = InfraGreenPrimary)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("PIN ÄNDERN", color = InfraGreenPrimary, style = MaterialTheme.typography.labelLarge.copy(fontFamily = FontFamily.Monospace))
+                        }
+                    }
+                }
+            }
+
+            // System Information & Clear All Ghost Data Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = InfraGreenPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("SYSTEM INFORMATION", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace))
+                    }
+                    Text(
+                        text = "Geister-Detektor Pro v1.2\nInfra-Grün HUD & Spektral-Scanner Engine\nOffline & Gemini AI Spirit Box Protokoll",
+                        style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace)
+                    )
+                    Button(
+                        onClick = { showClearConfirmDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = AlertInfraRed.copy(alpha = 0.2f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, AlertInfraRed),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = null, tint = AlertInfraRed)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("ALLE FUNDE LÖSCHEN", color = AlertInfraRed, style = MaterialTheme.typography.labelLarge.copy(fontFamily = FontFamily.Monospace))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+
+    // Clear All Confirmation Dialog
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.clearAllGhosts()
+                        showClearConfirmDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = AlertInfraRed)
+                ) {
+                    Text("BESTÄTIGEN", color = Color.White, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showClearConfirmDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                ) {
+                    Text("ABBRECHEN", color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
+                }
+            },
+            containerColor = InfraGreenSurface,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.border(1.dp, InfraGreenBorder, RoundedCornerShape(12.dp)),
+            title = {
+                Text(
+                    text = "ALLE FUNDE LÖSCHEN?",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        color = AlertInfraRed,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "Möchtest du wirklich die gesamte Datenbank leeren? Diese Aktion kann nicht rückgängig gemacht werden.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = InfraGreenTextPrimary,
+                        fontFamily = FontFamily.Monospace
+                    )
+                )
+            }
+        )
+    }
+
+    // Change Security PIN Dialog
+    if (showChangePinDialog) {
+        AlertDialog(
+            onDismissRequest = { showChangePinDialog = false },
+            confirmButton = {},
+            dismissButton = {},
+            containerColor = InfraGreenSurface,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.border(1.dp, InfraGreenBorder, RoundedCornerShape(12.dp)),
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.VpnKey,
+                            contentDescription = null,
+                            tint = InfraGreenPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "SICHERHEITS-PIN ÄNDERN",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = InfraGreenPrimary,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                    Text(
+                        text = "Geben Sie Ihre aktuelle PIN ein und wählen Sie eine neue 4-stellige Zahlen-PIN.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = InfraGreenTextPrimaryVariant,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp
+                        )
+                    )
+                    OutlinedTextField(
+                        value = currentPinInput,
+                        onValueChange = { if (it.length <= 4) currentPinInput = it },
+                        label = { Text("Aktuelle PIN", color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace, fontSize = 12.sp) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = InfraGreenPrimary,
+                            unfocusedBorderColor = InfraGreenBorder,
+                            focusedTextColor = InfraGreenTextPrimary,
+                            unfocusedTextColor = InfraGreenTextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth().testTag("current_pin_input")
+                    )
+                    OutlinedTextField(
+                        value = newPinInput,
+                        onValueChange = { if (it.length <= 4) newPinInput = it },
+                        label = { Text("Neue 4-stellige PIN", color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace, fontSize = 12.sp) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = InfraGreenPrimary,
+                            unfocusedBorderColor = InfraGreenBorder,
+                            focusedTextColor = InfraGreenTextPrimary,
+                            unfocusedTextColor = InfraGreenTextPrimary
+                        ),
+                        modifier = Modifier.fillMaxWidth().testTag("new_pin_input")
+                    )
+                    if (pinDialogError.isNotEmpty()) {
+                        Text(
+                            text = pinDialogError,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = AlertInfraRed,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                    if (pinDialogSuccess.isNotEmpty()) {
+                        Text(
+                            text = pinDialogSuccess,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = InfraGreenPrimary,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(
+                            onClick = { showChangePinDialog = false },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                        ) {
+                            Text("ABBRECHEN", color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = {
+                                if (newPinInput.length != 4 || !newPinInput.all { it.isDigit() }) {
+                                    pinDialogError = "Neue PIN muss genau 4 Zahlen enthalten!"
+                                    pinDialogSuccess = ""
+                                } else {
+                                    val success = viewModel.changePin(currentPinInput, newPinInput)
+                                    if (success) {
+                                        pinDialogSuccess = "✅ PIN erfolgreich geändert!"
+                                        pinDialogError = ""
+                                        currentPinInput = ""
+                                        newPinInput = ""
+                                    } else {
+                                        pinDialogError = "❌ Falsche aktuelle PIN!"
+                                        pinDialogSuccess = ""
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary)
+                        ) {
+                            Text("SPEICHERN", color = Color.Black, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        )
+    }
+}
