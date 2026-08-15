@@ -14,22 +14,27 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -41,47 +46,62 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
-import androidx.camera.core.ImageProxy
-import androidx.core.content.ContextCompat
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import com.example.util.ImageCaptureUtil
-import android.widget.Toast
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
+import androidx.camera.core.ImageProxy
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
 import com.example.ui.components.AudioWaveformCanvas
+import com.example.ui.components.CameraAnomalyOverlayCanvas
 import com.example.ui.components.CameraBackgroundView
+import com.example.ui.components.CaptureAndPortalCard
+import com.example.ui.components.DimensionSigilDialog
 import com.example.ui.components.EmfMeter
 import com.example.ui.components.FilterMode
+import com.example.ui.components.FlashingRedWarningOverlay
+import com.example.ui.components.GhostCompassOverlay
 import com.example.ui.components.MagnetFieldAndShieldCard
 import com.example.ui.components.RadarScannerCanvas
-import com.example.ui.components.SpiritBoxTranscriptListCard
 import com.example.ui.components.RealtimeEmfLineChart
 import com.example.ui.components.ScanLinesOverlay
-import com.example.ui.viewmodel.GhostViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.components.SpiritBoxTranscriptListCard
 import com.example.ui.i18n.AppLanguage
 import com.example.ui.i18n.UiStrings
+import com.example.ui.viewmodel.GhostViewModel
+import com.example.util.ImageCaptureUtil
+import kotlinx.coroutines.launch
+import android.widget.Toast
+
+enum class ScannerModuleTab(val title: String) {
+    ALL("ÜBERSICHT"),
+    RADAR("RADAR & HUD"),
+    DIMENSIONS("DIMENSIONEN & SIEGEL"),
+    EMF_FILTER("EMF & FILTER"),
+    SPIRIT_BOX("SPIRIT-BOX")
+}
 
 @Composable
 fun ScannerScreen(
@@ -102,20 +122,21 @@ fun ScannerScreen(
     val isFlashlightEnabled by viewModel.isFlashlightEnabled.collectAsStateWithLifecycle()
     val audioFeedbackEnabled by viewModel.audioFeedbackEnabled.collectAsStateWithLifecycle()
     val vibrationEnabled by viewModel.vibrationEnabled.collectAsStateWithLifecycle()
+    
+    val isDeviceConnected by viewModel.isDeviceConnected.collectAsStateWithLifecycle()
     val isSensorActive by viewModel.sensorManager.isSensorActive.collectAsStateWithLifecycle()
+    val activeSensorCount by viewModel.activeSensorCount.collectAsStateWithLifecycle()
+    val activeSensorNames by viewModel.activeSensorNames.collectAsStateWithLifecycle()
     val compassAzimuth by viewModel.compassAzimuth.collectAsStateWithLifecycle()
     val satelliteCount by viewModel.satelliteCount.collectAsStateWithLifecycle()
-    val currentLocation by viewModel.currentLocation.collectAsStateWithLifecycle()
+    val gyroSpeed by viewModel.gyroSpeed.collectAsStateWithLifecycle()
+    val lightLux by viewModel.lightLux.collectAsStateWithLifecycle()
+    val pressureHpa by viewModel.pressureHpa.collectAsStateWithLifecycle()
+    
     val cameraAnomalies by viewModel.cameraAnomalies.collectAsStateWithLifecycle()
     val cameraAvgLuminance by viewModel.cameraAvgLuminance.collectAsStateWithLifecycle()
     val isLiberatingAnomalies by viewModel.isLiberatingAnomalies.collectAsStateWithLifecycle()
     val liberatedBannerMessage by viewModel.liberatedBannerMessage.collectAsStateWithLifecycle()
-
-    val activeSensorCount by viewModel.activeSensorCount.collectAsStateWithLifecycle()
-    val activeSensorNames by viewModel.activeSensorNames.collectAsStateWithLifecycle()
-    val gyroSpeed by viewModel.gyroSpeed.collectAsStateWithLifecycle()
-    val lightLux by viewModel.lightLux.collectAsStateWithLifecycle()
-    val pressureHpa by viewModel.pressureHpa.collectAsStateWithLifecycle()
 
     val micAmplitude by viewModel.microphoneAnalyzer.amplitude.collectAsStateWithLifecycle()
     val isSpeaking by viewModel.spiritTtsManager.isSpeaking.collectAsStateWithLifecycle()
@@ -129,8 +150,10 @@ fun ScannerScreen(
     val activeDimension by viewModel.activeDimensionPlane.collectAsStateWithLifecycle()
     val activeSigil by viewModel.activeSigil.collectAsStateWithLifecycle()
     val sigilTimerSeconds by viewModel.sigilTimerSeconds.collectAsStateWithLifecycle()
+    val autoDimensionSealingEnabled by viewModel.autoDimensionSealingEnabled.collectAsStateWithLifecycle()
 
     var showSigilForgeDialog by remember { mutableStateOf(false) }
+    var selectedTab by remember { mutableStateOf(ScannerModuleTab.ALL) }
     val hasHighDemonVampireConcentration by viewModel.hasHighDemonVampireConcentration.collectAsStateWithLifecycle()
 
     val isMagnetShieldActive by viewModel.isMagnetShieldActive.collectAsStateWithLifecycle()
@@ -173,7 +196,7 @@ fun ScannerScreen(
         )
 
         // Animated Compass Overlay
-        com.example.ui.components.GhostCompassOverlay(
+        GhostCompassOverlay(
             azimuth = compassAzimuth,
             emfLevel = emfLevel,
             primaryColor = filterMode.primaryColor,
@@ -190,7 +213,7 @@ fun ScannerScreen(
             contentScale = ContentScale.Crop
         )
 
-        // Spectral Color Tint Layer based on active FilterMode and filterIntensity
+        // Spectral Color Tint Layer
         val tintColor = when (filterMode) {
             FilterMode.INFRA_GREEN -> Color(0xFF00FF66).copy(alpha = (0.05f + filterIntensity * 0.18f).coerceIn(0.02f, 0.35f))
             FilterMode.THERMAL_RED -> Color(0xFFFF4400).copy(alpha = (0.05f + filterIntensity * 0.22f).coerceIn(0.02f, 0.40f))
@@ -207,7 +230,7 @@ fun ScannerScreen(
         )
 
         // Real-Time Camera Anomaly Targeting Overlay
-        com.example.ui.components.CameraAnomalyOverlayCanvas(
+        CameraAnomalyOverlayCanvas(
             anomalies = cameraAnomalies,
             filterMode = filterMode,
             avgLuminance = cameraAvgLuminance,
@@ -223,7 +246,7 @@ fun ScannerScreen(
         }
 
         // Flashing Red Border Visual Warning when a high concentration of Demons or Vampires is detected
-        com.example.ui.components.FlashingRedWarningOverlay(
+        FlashingRedWarningOverlay(
             isActive = hasHighDemonVampireConcentration,
             entityCount = demonVampireCount
         )
@@ -232,10 +255,10 @@ fun ScannerScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(14.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             // Liberation Banner Notification Card
             liberatedBannerMessage?.let { bannerMsg ->
@@ -248,7 +271,7 @@ fun ScannerScreen(
                 ) {
                     Row(
                         modifier = Modifier
-                            .padding(14.dp)
+                            .padding(12.dp)
                             .fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -258,7 +281,8 @@ fun ScannerScreen(
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 color = Color(0xFFE0FFFF),
                                 fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
                             ),
                             modifier = Modifier.weight(1f)
                         )
@@ -273,101 +297,170 @@ fun ScannerScreen(
                 }
             }
 
-            // HUD Top Header Bar with Deep Obsidian Dark Theme & Glowing Neon Accents
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF070C09).copy(alpha = 0.88f))
-                    .border(1.5.dp, filterMode.primaryColor.copy(alpha = 0.75f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // 1. TOP HEADER & DEVICE CONNECTION STATUS BAR
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF070C09).copy(alpha = 0.92f)),
+                border = BorderStroke(1.5.dp, filterMode.primaryColor.copy(alpha = 0.75f)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        tint = filterMode.primaryColor
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
-                        Text(
-                            text = UiStrings.getHudTitle(appLanguage),
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                color = filterMode.primaryColor,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Header Row with Title and Quick Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = null,
+                                tint = filterMode.primaryColor,
+                                modifier = Modifier.size(22.dp)
                             )
-                        )
-                        Text(
-                            text = if (isSensorActive) "HARDWARE-SENSOREN ($activeSensorCount AKTIV): ${activeSensorNames.joinToString(" • ")}" else UiStrings.getSensorAtmospheric(appLanguage),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = filterMode.primaryColor.copy(alpha = 0.9f),
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 8.5.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        Text(
-                            text = "TELEMETRIE: GYRO ${String.format(java.util.Locale.US, "%.1f", gyroSpeed)}rad/s | LUX ${String.format(java.util.Locale.US, "%.0f", lightLux)}lx | BARO ${String.format(java.util.Locale.US, "%.1f", pressureHpa)}hPa",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color(0xFF00FFCC),
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 8.sp
-                            )
-                        )
-                        Text(
-                            text = if (cameraAnomalies.isNotEmpty()) "KAMERA-ANOMALIEN: ${cameraAnomalies.size} ENTDECKT" else "KAMERA-ANALYZER: IN SPEKTRAL-SUCHE",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = if (cameraAnomalies.isNotEmpty()) Color(0xFFFF3333) else filterMode.primaryColor.copy(alpha = 0.7f),
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        if (satelliteCount > 0) {
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "SATELLITEN UPLINK: $satelliteCount SAT | COMPASS: ${compassAzimuth.toInt()}°",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color(0xFF00E5FF),
+                                text = UiStrings.getHudTitle(appLanguage),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    color = filterMode.primaryColor,
                                     fontFamily = FontFamily.Monospace,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    letterSpacing = 1.sp
                                 )
                             )
                         }
-                    }
-                }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { viewModel.toggleFlashlight() },
-                        modifier = Modifier.testTag("flashlight_quick_icon_button")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { viewModel.toggleFlashlight() },
+                                modifier = Modifier.size(34.dp).testTag("flashlight_quick_icon_button")
+                            ) {
+                                Icon(
+                                    imageVector = if (isFlashlightEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                                    contentDescription = "Taschenlampe",
+                                    tint = if (isFlashlightEnabled) Color(0xFFFFFF00) else filterMode.primaryColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.toggleScanning() },
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isScanning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = "Scan Toggle",
+                                    tint = filterMode.primaryColor,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Device & Hardware Sensor Connectivity Pill
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF0D1B13))
+                            .border(1.dp, Color(0xFF00FF66).copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = if (isFlashlightEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                            contentDescription = "Taschenlampe & Lichtkegel",
-                            tint = if (isFlashlightEnabled) Color(0xFFFFFF00) else filterMode.primaryColor.copy(alpha = 0.7f)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF00FF66))
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "GERÄT VERBUNDEN • $activeSensorCount SENSOREN AKTIV",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF00FF88),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.5.sp
+                                )
+                            )
+                        }
+
+                        Text(
+                            text = "${compassAzimuth.toInt()}° | ${satelliteCount} SAT",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = Color(0xFF00E5FF),
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.5.sp
+                            )
                         )
                     }
-                    IconButton(onClick = { viewModel.toggleScanning() }) {
-                        Icon(
-                            imageVector = if (isScanning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = "Scan Toggle",
-                            tint = filterMode.primaryColor
+
+                    // Sensor Names & Telemetry String
+                    Text(
+                        text = "KANÄLE: ${activeSensorNames.joinToString(" • ")} | GYRO ${String.format(java.util.Locale.US, "%.1f", gyroSpeed)} | LUX ${String.format(java.util.Locale.US, "%.0f", lightLux)}lx | BARO ${String.format(java.util.Locale.US, "%.1f", pressureHpa)}hPa",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = filterMode.primaryColor.copy(alpha = 0.85f),
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 8.5.sp
+                        )
+                    )
+                }
+            }
+
+            // 2. CLEAN SECTION SELECTOR TABS
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF0C130F))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                ScannerModuleTab.values().forEach { tab ->
+                    val isSelected = selectedTab == tab
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (isSelected) filterMode.primaryColor.copy(alpha = 0.25f)
+                                else Color.Transparent
+                            )
+                            .border(
+                                width = if (isSelected) 1.dp else 0.dp,
+                                color = if (isSelected) filterMode.primaryColor else Color.Transparent,
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .clickable { selectedTab = tab }
+                            .padding(vertical = 8.dp, horizontal = 2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = tab.title,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = if (isSelected) filterMode.primaryColor else Color.Gray,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 8.5.sp
+                            ),
+                            maxLines = 1
                         )
                     }
                 }
             }
 
-            // Dedicated Tactical Flashlight & Light Cone Control Button
+            // Tactical Flashlight Button
             Button(
                 onClick = { viewModel.toggleFlashlight() },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp)
+                    .height(46.dp)
                     .testTag("flashlight_toggle_button"),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = if (isFlashlightEnabled) Color(0xFFFFFF00) else Color(0xFF131A15),
@@ -381,8 +474,9 @@ fun ScannerScreen(
             ) {
                 Icon(
                     imageVector = if (isFlashlightEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                    contentDescription = "Kamera-Taschenlampe & Lichtkegel Steuerung",
-                    tint = if (isFlashlightEnabled) Color.Black else filterMode.primaryColor
+                    contentDescription = "Taschenlampe & Lichtkegel",
+                    tint = if (isFlashlightEnabled) Color.Black else filterMode.primaryColor,
+                    modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -390,51 +484,13 @@ fun ScannerScreen(
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        letterSpacing = 0.8.sp
+                        fontSize = 12.sp,
+                        letterSpacing = 0.6.sp
                     )
                 )
             }
 
-            // Central Interactive Radar Scanner Canvas directly under Taschenlampe
-            RadarScannerCanvas(
-                blips = radarBlips,
-                filterMode = filterMode,
-                isScanning = isScanning,
-                isLiberating = isLiberatingAnomalies,
-                onLiberateAll = { viewModel.liberateRadarAnomalies() },
-                onLiberateBlip = { blip -> viewModel.handleRadarBlipClick(blip) }
-            )
-
-            // Primary Spirit Liberation Action Button
-            Button(
-                onClick = { viewModel.liberateRadarAnomalies() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(54.dp)
-                    .testTag("liberate_spirits_button"),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF00E5FF)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Send,
-                    contentDescription = null,
-                    tint = Color.Black
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "✨ GEISTER & ANOMALIEN BEFREIEN",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        color = Color.Black,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-            }
-
-            // Dedicated Radar Audio & Vibration Toggle Controls
+            // Quick Hardware Toggles (Vibration, Radar Audio, Speech)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -445,18 +501,19 @@ fun ScannerScreen(
                 // Vibration Switch
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "VIBRATION:",
+                        text = "VIB:",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = filterMode.primaryColor,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
                         )
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    androidx.compose.material3.Switch(
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Switch(
                         checked = vibrationEnabled,
                         onCheckedChange = { viewModel.toggleVibration() },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                        colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.Black,
                             checkedTrackColor = filterMode.primaryColor,
                             uncheckedThumbColor = filterMode.primaryColor.copy(alpha = 0.5f),
@@ -473,14 +530,15 @@ fun ScannerScreen(
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = filterMode.primaryColor,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
                         )
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    androidx.compose.material3.Switch(
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Switch(
                         checked = audioFeedbackEnabled,
                         onCheckedChange = { viewModel.toggleAudioFeedback() },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                        colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.Black,
                             checkedTrackColor = filterMode.primaryColor,
                             uncheckedThumbColor = filterMode.primaryColor.copy(alpha = 0.5f),
@@ -497,14 +555,15 @@ fun ScannerScreen(
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = filterMode.primaryColor,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
                         )
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    androidx.compose.material3.Switch(
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Switch(
                         checked = isSystemSpeechEnabled && !isTtsMuted,
                         onCheckedChange = { viewModel.toggleSystemSpeechEnabled() },
-                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                        colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.Black,
                             checkedTrackColor = filterMode.primaryColor,
                             uncheckedThumbColor = filterMode.primaryColor.copy(alpha = 0.5f),
@@ -515,251 +574,296 @@ fun ScannerScreen(
                 }
             }
 
-            // EMF Feldstärke Meter Gauge (über Spiritbox platziert)
-            EmfMeter(
-                emfValue = emfLevel,
-                dangerLevel = dangerLevel,
-                frequencyKhz = frequencyKhz,
-                isEmfSuppressed = isEmfSuppressionActive,
-                onToggleEmfSuppression = { viewModel.toggleEmfSuppression() },
-                onNeutralizeEmf = { viewModel.neutralizeEmfSpike() }
-            )
+            // === 3. TAB CONTENT SECTIONS ===
+            // SECTION: RADAR & HUD
+            if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.RADAR) {
+                // Central Interactive Radar Scanner Canvas
+                RadarScannerCanvas(
+                    blips = radarBlips,
+                    filterMode = filterMode,
+                    isScanning = isScanning,
+                    isLiberating = isLiberatingAnomalies,
+                    onLiberateAll = { viewModel.liberateRadarAnomalies() },
+                    onLiberateBlip = { blip -> viewModel.handleRadarBlipClick(blip) }
+                )
 
-            // Spirit Box Live Transcripts & Communications Log History ("Verlauf nach oben verschoben")
-            SpiritBoxTranscriptListCard(
-                logs = spiritLogList,
-                filterMode = filterMode,
-                isGenerating = isGenerating,
-                isSpeaking = isSpeaking,
-                onAskQuestion = { question -> viewModel.askSpirit(question) },
-                onTriggerAutoSweep = { viewModel.generateAndPlaySensorCreepyPhrase() },
-                onRespeak = { entry -> viewModel.respeakSpiritLogEntry(entry) },
-                onClearLogs = { viewModel.clearSpiritLog() }
-            )
+                // Primary Action Button: Liberate / Harmonize
+                Button(
+                    onClick = { viewModel.liberateRadarAnomalies() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .testTag("liberate_spirits_button"),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Send,
+                        contentDescription = null,
+                        tint = Color.Black
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "✨ GEISTER & ANOMALIEN BEFREIEN",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            color = Color.Black,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    )
+                }
+            }
 
-            // Magnetfeld-Analyse, Notiz-Protokoll & TV/PC-Monitor Schild-Schutz Panel
-            MagnetFieldAndShieldCard(
-                emfLevel = emfLevel,
-                isMagnetShieldActive = isMagnetShieldActive,
-                magnetLogNotes = magnetLogNotes,
-                autoFilterRotationEnabled = autoFilterRotationEnabled,
-                autoCaptureLiberateEnabled = autoCaptureLiberateEnabled,
-                backgroundScan247Enabled = backgroundScan247Enabled,
-                filterMode = filterMode,
-                batterySaverEnabled = isBatterySaverEnabled,
-                isBatterySaverThrottling = isBatterySaverThrottling,
-                appLanguage = appLanguage,
-                onToggleMagnetShield = { viewModel.toggleMagnetShield() },
-                onAddMagnetNote = { noteText, sourceTag -> viewModel.addMagnetNote(noteText, sourceTag) },
-                onClearMagnetNotes = { viewModel.clearMagnetLogNotes() },
-                onToggleAutoFilterRotation = { viewModel.toggleAutoFilterRotation() },
-                onToggleAutoCaptureLiberate = { viewModel.toggleAutoCaptureLiberate() },
-                onToggleBackgroundScan247 = { viewModel.toggleBackgroundScan247() },
-                onToggleBatterySaver = { viewModel.toggleBatterySaverEnabled() }
-            )
+            // SECTION: DIMENSIONEN & DÄMONEN-SIEGEL
+            if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.DIMENSIONS) {
+                CaptureAndPortalCard(
+                    activeRiftsCount = radarBlips.count { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT },
+                    capturedCount = capturedCount,
+                    isClosingDimension = isClosingDimension,
+                    isCapturingEntity = isCapturingEntity,
+                    primaryColor = filterMode.primaryColor,
+                    activeSigil = activeSigil,
+                    sigilTimerSeconds = sigilTimerSeconds,
+                    activeDimension = activeDimension,
+                    autoDimensionSealingEnabled = autoDimensionSealingEnabled,
+                    onToggleAutoDimensionSealing = { viewModel.toggleAutoDimensionSealing() },
+                    onCloseDimension = { viewModel.closeDimensionRift() },
+                    onSpawnDimension = { viewModel.spawnDimensionRift() },
+                    onCaptureEntity = { viewModel.captureEntity() },
+                    onSpawnThreat = { viewModel.spawnDemonOrVampire() },
+                    onOpenSigilForge = { showSigilForgeDialog = true }
+                )
+            }
 
-            // Dimension Portal Closing & Vampire/Demon Containment Trap Panel
-            com.example.ui.components.CaptureAndPortalCard(
-                activeRiftsCount = radarBlips.count { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT },
-                capturedCount = capturedCount,
-                isClosingDimension = isClosingDimension,
-                isCapturingEntity = isCapturingEntity,
-                primaryColor = filterMode.primaryColor,
-                activeSigil = activeSigil,
-                sigilTimerSeconds = sigilTimerSeconds,
-                activeDimension = activeDimension,
-                onCloseDimension = { viewModel.closeDimensionRift() },
-                onSpawnDimension = { viewModel.spawnDimensionRift() },
-                onCaptureEntity = { viewModel.captureEntity() },
-                onSpawnThreat = { viewModel.spawnDemonOrVampire() },
-                onOpenSigilForge = { showSigilForgeDialog = true }
-            )
+            // SECTION: EMF, SPEKTRUM & MAGNETFELD
+            if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.EMF_FILTER) {
+                // EMF Feldstärke Meter Gauge
+                EmfMeter(
+                    emfValue = emfLevel,
+                    dangerLevel = dangerLevel,
+                    frequencyKhz = frequencyKhz,
+                    isEmfSuppressed = isEmfSuppressionActive,
+                    onToggleEmfSuppression = { viewModel.toggleEmfSuppression() },
+                    onNeutralizeEmf = { viewModel.neutralizeEmfSpike() }
+                )
 
-            // Real-Time Neon Green Line Chart for Magnetic Field Fluctuations
-            RealtimeEmfLineChart(
-                dataPoints = emfHistory,
-                currentEmf = emfLevel,
-                isScanning = isScanning,
-                lineColor = filterMode.primaryColor
-            )
+                // Real-Time Neon Green Line Chart for Magnetic Field Fluctuations
+                RealtimeEmfLineChart(
+                    dataPoints = emfHistory,
+                    currentEmf = emfLevel,
+                    isScanning = isScanning,
+                    lineColor = filterMode.primaryColor
+                )
 
-            // Spirit-Box Audio Spectrum Waveform (Voice Scanner)
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0D140F)),
-                border = BorderStroke(1.dp, filterMode.primaryColor.copy(alpha = 0.5f)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+                // Magnetfeld-Analyse, Notiz-Protokoll & Schild-Schutz Panel
+                MagnetFieldAndShieldCard(
+                    emfLevel = emfLevel,
+                    isMagnetShieldActive = isMagnetShieldActive,
+                    magnetLogNotes = magnetLogNotes,
+                    autoFilterRotationEnabled = autoFilterRotationEnabled,
+                    autoCaptureLiberateEnabled = autoCaptureLiberateEnabled,
+                    backgroundScan247Enabled = backgroundScan247Enabled,
+                    filterMode = filterMode,
+                    batterySaverEnabled = isBatterySaverEnabled,
+                    isBatterySaverThrottling = isBatterySaverThrottling,
+                    appLanguage = appLanguage,
+                    onToggleMagnetShield = { viewModel.toggleMagnetShield() },
+                    onAddMagnetNote = { noteText, sourceTag -> viewModel.addMagnetNote(noteText, sourceTag) },
+                    onClearMagnetNotes = { viewModel.clearMagnetLogNotes() },
+                    onToggleAutoFilterRotation = { viewModel.toggleAutoFilterRotation() },
+                    onToggleAutoCaptureLiberate = { viewModel.toggleAutoCaptureLiberate() },
+                    onToggleBackgroundScan247 = { viewModel.toggleBackgroundScan247() },
+                    onToggleBatterySaver = { viewModel.toggleBatterySaverEnabled() }
+                )
+
+                // Filter Selector Chips & Intensity Slider
                 Column(
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "SPIRIT-BOX AUDIO SPEKTRUM (STIMMEN-SCANNER)",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = filterMode.primaryColor,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.FilterList,
+                            contentDescription = null,
+                            tint = filterMode.primaryColor
                         )
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isScanning) "ACTIVE SWEEP" else "STANDBY",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = if (isScanning) Color(0xFF00FFCC) else Color.Gray,
+                            text = "SPECTRAL FILTERANSICHT:",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = Color.White.copy(alpha = 0.8f),
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         )
                     }
 
-                    AudioWaveformCanvas(
-                        isActive = true,
-                        isScanning = isScanning,
-                        isGenerating = isGenerating,
-                        isSpeaking = isSpeaking,
-                        liveMicAmplitude = micAmplitude,
-                        frequencyKhz = frequencyKhz,
-                        emfLevel = emfLevel,
-                        waveColor = filterMode.primaryColor,
-                        amplitudeMultiplier = if (isSpeaking || isGenerating) 1.5f else 0.8f
-                    )
-                }
-            }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterMode.values().forEach { mode ->
+                            val isSelected = mode == filterMode
+                            val activeColor = mode.primaryColor
 
-            // Filter Selector Chips ("Filteransicht") & Intensity Slider
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.FilterList,
-                        contentDescription = null,
-                        tint = filterMode.primaryColor
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "SPECTRAL FILTERANSICHT:",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterMode.values().forEach { mode ->
-                        val isSelected = mode == filterMode
-                        val activeColor = mode.primaryColor
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    if (isSelected) activeColor.copy(alpha = 0.25f)
-                                    else Color.Black.copy(alpha = 0.6f)
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isSelected) activeColor.copy(alpha = 0.25f)
+                                        else Color.Black.copy(alpha = 0.6f)
+                                    )
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) activeColor else Color.Gray.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                    .clickable { viewModel.setFilterMode(mode) }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = mode.displayName,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = if (isSelected) activeColor else Color.White.copy(alpha = 0.6f),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 10.sp
+                                    )
                                 )
-                                .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) activeColor else Color.Gray.copy(alpha = 0.3f),
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clickable { viewModel.setFilterMode(mode) }
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
-                            contentAlignment = Alignment.Center
+                            }
+                        }
+                    }
+
+                    // Filter Intensity / Contrast Slider
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.6f))
+                            .border(1.dp, filterMode.primaryColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = mode.displayName,
+                                text = "FILTER-INTENSITÄT / KONTRAST:",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (isSelected) activeColor else Color.White.copy(alpha = 0.6f),
+                                    color = filterMode.primaryColor,
                                     fontFamily = FontFamily.Monospace,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                )
+                            )
+                            Text(
+                                text = "${(filterIntensity * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = filterMode.primaryColor,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp
                                 )
                             )
                         }
-                    }
-                }
 
-                // Filter Intensity / Contrast Slider
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color.Black.copy(alpha = 0.6f))
-                        .border(1.dp, filterMode.primaryColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "FILTER-INTENSITÄT / KONTRAST:",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = filterMode.primaryColor,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp
-                            )
-                        )
-                        Text(
-                            text = "${(filterIntensity * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = filterMode.primaryColor,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 10.sp
-                            )
+                        Slider(
+                            value = filterIntensity,
+                            onValueChange = { viewModel.setFilterIntensity(it) },
+                            valueRange = 0.10f..1.00f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = filterMode.primaryColor,
+                                activeTrackColor = filterMode.primaryColor,
+                                inactiveTrackColor = filterMode.primaryColor.copy(alpha = 0.25f)
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("filter_intensity_slider")
                         )
                     }
-
-                    Slider(
-                        value = filterIntensity,
-                        onValueChange = { viewModel.setFilterIntensity(it) },
-                        valueRange = 0.10f..1.00f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = filterMode.primaryColor,
-                            activeTrackColor = filterMode.primaryColor,
-                            inactiveTrackColor = filterMode.primaryColor.copy(alpha = 0.25f)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("filter_intensity_slider")
-                    )
                 }
             }
 
-            // Capture Anomaly / Save Entity Action Button
+            // SECTION: SPIRIT-BOX & AUDIO
+            if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.SPIRIT_BOX) {
+                // Spirit Box Live Transcripts & Communications Log History
+                SpiritBoxTranscriptListCard(
+                    logs = spiritLogList,
+                    filterMode = filterMode,
+                    isGenerating = isGenerating,
+                    isSpeaking = isSpeaking,
+                    onAskQuestion = { question -> viewModel.askSpirit(question) },
+                    onTriggerAutoSweep = { viewModel.generateAndPlaySensorCreepyPhrase() },
+                    onRespeak = { entry -> viewModel.respeakSpiritLogEntry(entry) },
+                    onClearLogs = { viewModel.clearSpiritLog() }
+                )
+
+                // Spirit-Box Audio Spectrum Waveform
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D140F)),
+                    border = BorderStroke(1.dp, filterMode.primaryColor.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "SPIRIT-BOX AUDIO SPEKTRUM (STIMMEN-SCANNER)",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    color = filterMode.primaryColor,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            Text(
+                                text = if (isScanning) "ACTIVE SWEEP" else "STANDBY",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isScanning) Color(0xFF00FFCC) else Color.Gray,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        AudioWaveformCanvas(
+                            isActive = true,
+                            isScanning = isScanning,
+                            isGenerating = isGenerating,
+                            isSpeaking = isSpeaking,
+                            liveMicAmplitude = micAmplitude,
+                            frequencyKhz = frequencyKhz,
+                            emfLevel = emfLevel,
+                            waveColor = filterMode.primaryColor,
+                            amplitudeMultiplier = if (isSpeaking || isGenerating) 1.5f else 0.8f
+                        )
+                    }
+                }
+            }
+
+            // Capture Anomaly / Save Entity Action Buttons
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Button(
-                    onClick = {
-                        showSaveDialog = true
-                    },
+                    onClick = { showSaveDialog = true },
                     modifier = Modifier
                         .weight(1f)
-                        .height(52.dp)
+                        .height(50.dp)
                         .testTag("save_entity_button"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = filterMode.primaryColor
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = filterMode.primaryColor),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
@@ -773,7 +877,8 @@ fun ScannerScreen(
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = Color.Black,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         )
                     )
                 }
@@ -797,11 +902,9 @@ fun ScannerScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(52.dp)
+                        .height(50.dp)
                         .testTag("capture_snapshot_button"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = filterMode.primaryColor
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = filterMode.primaryColor),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
@@ -815,7 +918,8 @@ fun ScannerScreen(
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = Color.Black,
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
                         )
                     )
                 }
@@ -823,7 +927,15 @@ fun ScannerScreen(
         }
     }
 
-    // Quick Capture Save Dialog
+    // Dimension & Sigil Forge Dialog Overlay (Root Level)
+    if (showSigilForgeDialog) {
+        DimensionSigilDialog(
+            viewModel = viewModel,
+            onDismiss = { showSigilForgeDialog = false }
+        )
+    }
+
+    // Quick Capture Save Dialog (Root Level)
     if (showSaveDialog) {
         androidx.compose.ui.window.Dialog(onDismissRequest = { showSaveDialog = false }) {
             Card(
@@ -909,13 +1021,6 @@ fun ScannerScreen(
                         }
                     }
                 }
-            }
-            // Dimension & Sigil Forge Dialog Overlay
-            if (showSigilForgeDialog) {
-                com.example.ui.components.DimensionSigilDialog(
-                    viewModel = viewModel,
-                    onDismiss = { showSigilForgeDialog = false }
-                )
             }
         }
     }

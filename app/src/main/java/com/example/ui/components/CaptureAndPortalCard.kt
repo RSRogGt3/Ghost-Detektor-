@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,10 +14,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.runtime.Composable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Shield
@@ -25,13 +28,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.animation.animateContentSize
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.IconButton
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +61,8 @@ fun CaptureAndPortalCard(
     activeSigil: SigilType? = null,
     sigilTimerSeconds: Int = 0,
     activeDimension: DimensionPlane = DimensionPlane.MORTAL_PRIME,
+    autoDimensionSealingEnabled: Boolean = true,
+    onToggleAutoDimensionSealing: () -> Unit = {},
     onCloseDimension: () -> Unit,
     onSpawnDimension: () -> Unit,
     onCaptureEntity: () -> Unit,
@@ -130,6 +135,58 @@ fun CaptureAndPortalCard(
             }
 
             if (!isMinimized) {
+                // Auto Dimension Finding & Sealing Toggle Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF04202C))
+                        .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = if (autoDimensionSealingEnabled) Color(0xFF00FFCC) else Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "AUTO-DIMENSIONS-VERSIEGELUNG",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (autoDimensionSealingEnabled) Color(0xFF00FFCC) else Color.Gray,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
+                            )
+                        }
+                        Text(
+                            text = if (autoDimensionSealingEnabled) "Risse werden automatisch geortet, versiegelt & geschlossen" else "Manuelle Versiegelung aktiv",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.LightGray,
+                                fontSize = 9.5.sp
+                            )
+                        )
+                    }
+
+                    Switch(
+                        checked = autoDimensionSealingEnabled,
+                        onCheckedChange = { onToggleAutoDimensionSealing() },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.Black,
+                            checkedTrackColor = Color(0xFF00E5FF),
+                            uncheckedThumbColor = Color.Gray,
+                            uncheckedTrackColor = Color(0xFF131A1F)
+                        ),
+                        modifier = Modifier.testTag("auto_dimension_seal_switch")
+                    )
+                }
+
                 // Active Sigil Status Banner
                 if (activeSigil != null) {
                     Card(
@@ -186,7 +243,7 @@ fun CaptureAndPortalCard(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "🔮 SIGEL-SCHMIEDE & DIMENSIONEN ÖFFNEN",
+                        text = "🔮 SIEGEL-SCHMIEDE & DIMENSIONEN ÖFFNEN",
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold,

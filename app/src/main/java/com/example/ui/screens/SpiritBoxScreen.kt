@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.ui.components.AudioWaveformCanvas
 import com.example.ui.components.EmfMeter
+import com.example.ui.components.GhostCommunicatorCard
 import com.example.ui.components.SpiritLogOverlayDialog
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
@@ -219,6 +220,12 @@ fun SpiritBoxScreen(
                 isEmfSuppressed = isEmfSuppressionActive,
                 onToggleEmfSuppression = { viewModel.toggleEmfSuppression() },
                 onNeutralizeEmf = { viewModel.neutralizeEmfSpike() }
+            )
+
+            // Echtzeit-Kommunikator (Live Mikrofon, Zwei-Wege-EVP & Sprach-Analyse)
+            GhostCommunicatorCard(
+                viewModel = viewModel,
+                modifier = Modifier.fillMaxWidth()
             )
 
             // Microphone Permission Card

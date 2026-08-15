@@ -28,6 +28,9 @@ class MicrophoneAudioAnalyzer(private val context: Context) {
     private val _speechDetectedEvent = MutableStateFlow(false)
     val speechDetectedEvent: StateFlow<Boolean> = _speechDetectedEvent.asStateFlow()
 
+    private val _speechThreshold = MutableStateFlow(0.15f)
+    val speechThreshold: StateFlow<Float> = _speechThreshold.asStateFlow()
+
     private var audioRecord: AudioRecord? = null
     private var recordJob: Job? = null
 
@@ -35,6 +38,10 @@ class MicrophoneAudioAnalyzer(private val context: Context) {
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
     private val audioFormat = AudioFormat.ENCODING_PCM_16BIT
     private val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+
+    fun setSpeechThreshold(threshold: Float) {
+        _speechThreshold.value = threshold.coerceIn(0.04f, 0.50f)
+    }
 
     fun startListening(coroutineScope: CoroutineScope, onSpeechDetected: (() -> Unit)? = null) {
         if (_isListening.value) return
@@ -90,17 +97,18 @@ class MicrophoneAudioAnalyzer(private val context: Context) {
                                 }
                                 val rms = sqrt(sumSquares / read)
                                 // Normalized amplitude approx 0 to 1
-                                val normalizedAmp = (rms / 8000.0).toFloat().coerceIn(0f, 1f)
+                                val normalizedAmp = (rms / 7500.0).toFloat().coerceIn(0f, 1f)
                                 _amplitude.value = normalizedAmp
 
                                 // Speech burst detection logic (above threshold)
-                                if (normalizedAmp > 0.18f) {
+                                val currentThresh = _speechThreshold.value
+                                if (normalizedAmp > currentThresh) {
                                     speechFrameCount++
                                     silentFrameCount = 0
                                 } else {
-                                    if (speechFrameCount > 6) { // was speaking for a moment
+                                    if (speechFrameCount > 4) { // was speaking for a moment
                                         silentFrameCount++
-                                        if (silentFrameCount > 10) { // now paused after speaking
+                                        if (silentFrameCount > 8) { // now paused after speaking
                                             _speechDetectedEvent.value = true
                                             onSpeechDetected?.invoke()
                                             speechFrameCount = 0

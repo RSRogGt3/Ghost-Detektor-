@@ -183,6 +183,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     private val _cameraAvgLuminance = MutableStateFlow(128f)
     val cameraAvgLuminance: StateFlow<Float> = _cameraAvgLuminance.asStateFlow()
 
+    val isDeviceConnected: StateFlow<Boolean> = sensorManager.isDeviceConnected
     val compassAzimuth: StateFlow<Float> = sensorManager.compassAzimuth
     val activeSensorCount: StateFlow<Int> = sensorManager.activeSensorCount
     val activeSensorNames: StateFlow<List<String>> = sensorManager.activeSensorNames
@@ -216,7 +217,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     private val _filterIntensity = MutableStateFlow(0.70f)
     val filterIntensity: StateFlow<Float> = _filterIntensity.asStateFlow()
 
-    // Spirit Box UI State
+    // Spirit Box & Ghost Communicator UI State
     private val _spiritQuestion = MutableStateFlow("")
     val spiritQuestion: StateFlow<String> = _spiritQuestion.asStateFlow()
 
@@ -225,6 +226,12 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isGeneratingSpiritResponse = MutableStateFlow(false)
     val isGeneratingSpiritResponse: StateFlow<Boolean> = _isGeneratingSpiritResponse.asStateFlow()
+
+    private val _isCommunicatorActive = MutableStateFlow(false)
+    val isCommunicatorActive: StateFlow<Boolean> = _isCommunicatorActive.asStateFlow()
+
+    private val _communicatorStatusText = MutableStateFlow("📻 ECHTZEIT-KOMMUNIKATOR: BEREIT")
+    val communicatorStatusText: StateFlow<String> = _communicatorStatusText.asStateFlow()
 
     private val _autoSpiritBoxEnabled = MutableStateFlow(false)
     val autoSpiritBoxEnabled: StateFlow<Boolean> = _autoSpiritBoxEnabled.asStateFlow()
@@ -365,6 +372,10 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     // Auto Capture & Auto Liberation State
     private val _autoCaptureLiberateEnabled = MutableStateFlow(true)
     val autoCaptureLiberateEnabled: StateFlow<Boolean> = _autoCaptureLiberateEnabled.asStateFlow()
+
+    // Auto Dimension Finding & Sealing State (Automatische Dimensions-Ortung & Schließen)
+    private val _autoDimensionSealingEnabled = MutableStateFlow(true)
+    val autoDimensionSealingEnabled: StateFlow<Boolean> = _autoDimensionSealingEnabled.asStateFlow()
 
     // Background 24/7 Scan State
     private val _backgroundScan247Enabled = MutableStateFlow(true)
@@ -756,6 +767,20 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         _spiritPhraseLog.value = listOf(logEntry) + _spiritPhraseLog.value
     }
 
+    fun toggleAutoDimensionSealing() {
+        val newState = !_autoDimensionSealingEnabled.value
+        _autoDimensionSealingEnabled.value = newState
+        val msg = if (newState) "🌀 AUTO-DIMENSIONS-VERSIEGELUNG: AKTIVIERT (Risse werden automatisch erkannt & geschlossen)" else "🌀 AUTO-DIMENSIONS-VERSIEGELUNG: DEAKTIVIERT (Manuelle Steuerung)"
+        val logEntry = SpiritLogEntry(
+            question = "Dimensions-Automatik",
+            phrase = msg,
+            emfLevel = _emfLevel.value,
+            dangerLevel = 1
+        )
+        _spiritPhraseLog.value = listOf(logEntry) + _spiritPhraseLog.value
+        _liberatedBannerMessage.value = msg
+    }
+
     fun toggleBackgroundScan247() {
         val newState = !_backgroundScan247Enabled.value
         _backgroundScan247Enabled.value = newState
@@ -947,6 +972,53 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    companion object {
+        val GHOST_NAMES = listOf(
+            "Poltergeist",
+            "Schattenwesen",
+            "Banshee (Klageweib)",
+            "Ätherisches Phantom",
+            "Erdgebundener Spuk",
+            "Astral-Projektion",
+            "Weißes Rauschen Wesen",
+            "Spukhaus-Resonanz",
+            "Flüsternder Geist",
+            "Ruhelose Seele"
+        )
+        val DEMON_NAMES = listOf(
+            "Infernaler Dämon",
+            "Höllenfürst",
+            "Schatten-Unhold",
+            "Arch-Demon",
+            "Asche-Dämon",
+            "Quälender Nachtmahr",
+            "Blut-Dämon",
+            "Infernale Flamme",
+            "Besessenheits-Dämon",
+            "Chaos-Dämon"
+        )
+        val VAMPIRE_NAMES = listOf(
+            "Astral-Vampir",
+            "Nosferatu-Präsenz",
+            "Energie-Vampir",
+            "Chi-Absorber",
+            "Schatten-Blutsauger",
+            "Nacht-Stalker",
+            "Aura-Parasit",
+            "Vampir-Fürst"
+        )
+        val DIMENSION_NAMES = listOf(
+            "Quanten-Riss Alpha-7",
+            "Raum-Zeit-Spalte",
+            "Void-Portal Delta",
+            "Astral-Tor Nexus",
+            "Schatten-Dimension Omega",
+            "Multiversum-Bruch",
+            "Äther-Verzerrung",
+            "Interdimensionale Pforte"
+        )
+    }
+
     private fun startScanningLoop() {
         scanJob?.cancel()
         scanJob = viewModelScope.launch {
@@ -1022,31 +1094,31 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                         if (fadeIndex != -1) updatedBlips.removeAt(fadeIndex)
                     }
 
-                    // 3. Chance to add a new blip based on EMF activity
-                    val maxBlips = if (newEmf > 6f) 5 else 3
+                    // 3. Chance to add a new blip based on EMF activity (Geister, Dämonen, Vampire, Dimensionen)
+                    val maxBlips = if (newEmf > 6f) 5 else 4
                     if (updatedBlips.count { it.id.startsWith("blip_") } < maxBlips) {
-                        val spawnChance = if (newEmf > 5f) 0.6f else 0.20f
+                        val spawnChance = if (newEmf > 5f) 0.65f else 0.30f
                         if (Random.nextFloat() < spawnChance) {
                             val spawnRoll = Random.nextFloat()
                             val (category, labelName, danger) = when {
-                                spawnRoll < 0.22f -> Triple(
+                                spawnRoll < 0.25f -> Triple(
                                     com.example.ui.components.EntityCategory.DEMON,
-                                    "Dämon #${Random.nextInt(10, 99)}",
+                                    "${DEMON_NAMES.random()} #${Random.nextInt(10, 99)}",
                                     Random.nextInt(4, 6)
                                 )
-                                spawnRoll < 0.44f -> Triple(
+                                spawnRoll < 0.50f -> Triple(
                                     com.example.ui.components.EntityCategory.VAMPIRE,
-                                    "Vampir #${Random.nextInt(10, 99)}",
+                                    "${VAMPIRE_NAMES.random()} #${Random.nextInt(10, 99)}",
                                     Random.nextInt(4, 6)
                                 )
-                                spawnRoll < 0.60f -> Triple(
+                                spawnRoll < 0.70f -> Triple(
                                     com.example.ui.components.EntityCategory.DIMENSION_RIFT,
-                                    "Dimension-Riss #${Random.nextInt(1, 9)}",
+                                    "${DIMENSION_NAMES.random()} #${Random.nextInt(1, 99)}",
                                     Random.nextInt(3, 6)
                                 )
                                 else -> Triple(
                                     com.example.ui.components.EntityCategory.GHOST,
-                                    if (newEmf > 6.5f || isSpike) "Poltergeist #${Random.nextInt(10, 99)}" else "Phantom #${Random.nextInt(10, 99)}",
+                                    "${GHOST_NAMES.random()} #${Random.nextInt(10, 99)}",
                                     if (newEmf > 6.5f || isSpike) Random.nextInt(4, 6) else Random.nextInt(1, 4)
                                 )
                             }
@@ -1064,20 +1136,43 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
 
+                    // 4. Auto Dimension Discovery: If auto-dimension sealing is active, auto-locate dimension rifts if none exist
+                    if (_autoDimensionSealingEnabled.value && !_isClosingDimension.value) {
+                        val hasRift = updatedBlips.any { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT }
+                        if (!hasRift && Random.nextFloat() < 0.35f) {
+                            val riftName = "${DIMENSION_NAMES.random()} #${Random.nextInt(1, 99)}"
+                            val newRift = RadarBlip(
+                                id = "blip_auto_rift_${System.currentTimeMillis()}_${Random.nextInt(1000)}",
+                                angleDegrees = Random.nextFloat() * 360f,
+                                distanceRatio = Random.nextFloat() * 0.5f + 0.2f,
+                                dangerLevel = 5,
+                                label = riftName,
+                                category = com.example.ui.components.EntityCategory.DIMENSION_RIFT
+                            )
+                            updatedBlips.add(newRift)
+                            _liberatedBannerMessage.value = "🌀 AUTO-ORTUNG: $riftName aufgespürt! Initiere automatische Versiegelung..."
+                            if (_audioFeedbackEnabled.value) {
+                                soundManager.playThreatAlert()
+                            }
+                            triggerVibration(120)
+                        }
+                    }
+
                     _radarBlips.value = updatedBlips
 
-                    if (_isAutoDestroyEnabled.value || _autoCaptureLiberateEnabled.value) {
-                        val rift = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT }
-                        val threat = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DEMON || it.category == com.example.ui.components.EntityCategory.VAMPIRE }
-                        val ghost = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.GHOST }
-                        
-                        if (rift != null && !_isClosingDimension.value) {
-                            viewModelScope.launch { delay(300); closeDimensionRift(rift) }
-                        } else if (threat != null && !_isCapturingEntity.value) {
-                            viewModelScope.launch { delay(300); captureEntity(threat) }
-                        } else if (ghost != null && !_isLiberatingAnomalies.value) {
-                            viewModelScope.launch { delay(300); liberateSingleBlip(ghost) }
-                        }
+                    // Auto Sealing & Containment Automations
+                    val rift = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT }
+                    val threat = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DEMON || it.category == com.example.ui.components.EntityCategory.VAMPIRE }
+                    val ghost = updatedBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.GHOST }
+
+                    if (_autoDimensionSealingEnabled.value && rift != null && !_isClosingDimension.value) {
+                        viewModelScope.launch { delay(300); closeDimensionRift(rift) }
+                    }
+                    if ((_isAutoDestroyEnabled.value || _autoCaptureLiberateEnabled.value) && threat != null && !_isCapturingEntity.value) {
+                        viewModelScope.launch { delay(300); captureEntity(threat) }
+                    }
+                    if ((_isAutoDestroyEnabled.value || _autoCaptureLiberateEnabled.value) && ghost != null && !_isLiberatingAnomalies.value) {
+                        viewModelScope.launch { delay(300); liberateSingleBlip(ghost) }
                     }
 
                     if (_audioFeedbackEnabled.value) {
@@ -1192,7 +1287,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 triggerEntityDetectionVibration((maxIntensity * 5f).toInt().coerceIn(1, 5))
             }
 
-            // Convert camera frame anomalies directly into radar blips
+            // Convert camera frame anomalies directly into radar blips with full category detection
             val camBlips = anomalies.mapIndexed { idx, anom ->
                 val dx = anom.xRatio - 0.5f
                 val dy = anom.yRatio - 0.5f
@@ -1200,30 +1295,55 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 val dist = (kotlin.math.sqrt((dx * dx + dy * dy).toDouble()).toFloat() * 1.5f).coerceIn(0.12f, 0.85f)
                 val danger = (anom.intensity * 5f).toInt().coerceIn(1, 5)
 
+                val (category, entityName) = when (anom.type) {
+                    com.example.data.AnomalyType.THERMAL_HOTSPOT -> Pair(
+                        com.example.ui.components.EntityCategory.DEMON,
+                        if (anom.intensity > 0.6f) "${DEMON_NAMES.random()} (Hotspot)" else "Dämonische Hitze-Präsenz"
+                    )
+                    com.example.data.AnomalyType.COLD_SPOT -> Pair(
+                        com.example.ui.components.EntityCategory.VAMPIRE,
+                        if (anom.intensity > 0.6f) "${VAMPIRE_NAMES.random()} (Kälte-Feld)" else "Astral-Vampirische Aura"
+                    )
+                    com.example.data.AnomalyType.SPECTRAL_FLARE -> Pair(
+                        com.example.ui.components.EntityCategory.DIMENSION_RIFT,
+                        "${DIMENSION_NAMES.random()} (Kamera-Flare)"
+                    )
+                    com.example.data.AnomalyType.MOTION_SHIFT -> Pair(
+                        com.example.ui.components.EntityCategory.GHOST,
+                        if (anom.intensity > 0.5f) "Poltergeist (Kinetik)" else "${GHOST_NAMES.random()} (Bewegung)"
+                    )
+                    com.example.data.AnomalyType.BRIGHTNESS_SPIKE -> Pair(
+                        com.example.ui.components.EntityCategory.GHOST,
+                        "${GHOST_NAMES.random()} (Licht-Reflexion)"
+                    )
+                }
+
                 RadarBlip(
                     id = "cam_blip_${anom.id}_$idx",
                     angleDegrees = angle,
                     distanceRatio = dist,
                     dangerLevel = danger,
-                    label = anom.type.displayName
+                    label = entityName,
+                    category = category
                 )
             }
             if (camBlips.isNotEmpty()) {
                 val currentNonCamBlips = _radarBlips.value.filter { !it.id.startsWith("cam_") }
                 _radarBlips.value = currentNonCamBlips + camBlips
                 
-                if (_isAutoDestroyEnabled.value || _autoCaptureLiberateEnabled.value) {
-                    val rift = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT }
-                    val threat = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DEMON || it.category == com.example.ui.components.EntityCategory.VAMPIRE }
-                    val ghost = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.GHOST }
+                // Auto Sealing & Containment Automations for Camera Anomalies
+                val rift = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT }
+                val threat = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.DEMON || it.category == com.example.ui.components.EntityCategory.VAMPIRE }
+                val ghost = camBlips.firstOrNull { it.category == com.example.ui.components.EntityCategory.GHOST }
 
-                    if (rift != null && !_isClosingDimension.value) {
-                        viewModelScope.launch { delay(300); closeDimensionRift(rift) }
-                    } else if (threat != null && !_isCapturingEntity.value) {
-                        viewModelScope.launch { delay(300); captureEntity(threat) }
-                    } else if (ghost != null && !_isLiberatingAnomalies.value) {
-                        viewModelScope.launch { delay(300); liberateSingleBlip(ghost) }
-                    }
+                if (_autoDimensionSealingEnabled.value && rift != null && !_isClosingDimension.value) {
+                    viewModelScope.launch { delay(300); closeDimensionRift(rift) }
+                }
+                if ((_isAutoDestroyEnabled.value || _autoCaptureLiberateEnabled.value) && threat != null && !_isCapturingEntity.value) {
+                    viewModelScope.launch { delay(300); captureEntity(threat) }
+                }
+                if ((_isAutoDestroyEnabled.value || _autoCaptureLiberateEnabled.value) && ghost != null && !_isLiberatingAnomalies.value) {
+                    viewModelScope.launch { delay(300); liberateSingleBlip(ghost) }
                 }
             }
         }
@@ -1576,12 +1696,13 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun spawnDimensionRift() {
         val currentBlips = _radarBlips.value.toMutableList()
+        val riftName = "${DIMENSION_NAMES.random()} #${Random.nextInt(1, 99)}"
         val newRift = RadarBlip(
             id = "blip_${System.currentTimeMillis()}_${Random.nextInt(1000)}",
             angleDegrees = Random.nextFloat() * 360f,
             distanceRatio = Random.nextFloat() * 0.6f + 0.2f,
             dangerLevel = 5,
-            label = "Dimension-Riss #${Random.nextInt(1, 99)}",
+            label = riftName,
             category = com.example.ui.components.EntityCategory.DIMENSION_RIFT
         )
         _radarBlips.value = currentBlips + newRift
@@ -1589,14 +1710,14 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             soundManager.playThreatAlert()
         }
         triggerVibration(150)
-        _liberatedBannerMessage.value = "⚠️ WARNUNG: Interdimensionaler Riss auf dem Radar geortet! Portal versiegeln!"
+        _liberatedBannerMessage.value = "⚠️ WARNUNG: $riftName auf dem Radar geortet! Portal versiegeln!"
     }
 
     fun spawnDemonOrVampire() {
         val currentBlips = _radarBlips.value.toMutableList()
         val isDemon = Random.nextBoolean()
         val category = if (isDemon) com.example.ui.components.EntityCategory.DEMON else com.example.ui.components.EntityCategory.VAMPIRE
-        val labelName = if (isDemon) "Dämon #${Random.nextInt(10, 99)}" else "Vampir #${Random.nextInt(10, 99)}"
+        val labelName = if (isDemon) "${DEMON_NAMES.random()} #${Random.nextInt(10, 99)}" else "${VAMPIRE_NAMES.random()} #${Random.nextInt(10, 99)}"
 
         val newThreat = RadarBlip(
             id = "blip_${System.currentTimeMillis()}_${Random.nextInt(1000)}",
@@ -1611,7 +1732,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             soundManager.playThreatAlert()
         }
         triggerVibration(200)
-        _liberatedBannerMessage.value = "⚠️ WARNUNG: HOHE DÄMONEN / VAMPIR KONZENTRATION ERKANNT! Roter Warnrahmen aktiv!"
+        _liberatedBannerMessage.value = "⚠️ WARNUNG: $labelName ERKANNT! Roter Warnrahmen aktiv!"
     }
 
     fun captureEntity(blip: RadarBlip? = null) {
@@ -1768,7 +1889,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
      * und gibt diese über das Spirit-Box-Audio Text-to-Speech System wieder.
      */
     fun generateAndPlaySensorCreepyPhrase() {
-        if (_isGeneratingSpiritResponse.value) return
+        if (_isGeneratingSpiritResponse.value || spiritTtsManager.isSpeaking.value) return
 
         _isGeneratingSpiritResponse.value = true
         viewModelScope.launch {
@@ -1808,14 +1929,15 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun askSpirit(questionText: String) {
-        if (questionText.isBlank() || _isGeneratingSpiritResponse.value) return
+        if (questionText.isBlank() || _isGeneratingSpiritResponse.value || spiritTtsManager.isSpeaking.value) return
 
         _spiritQuestion.value = questionText
         _isGeneratingSpiritResponse.value = true
+        _communicatorStatusText.value = "🔍 DEKODIERE PARANORMALES SIGNAL FÜR: \"$questionText\""
 
         viewModelScope.launch {
             soundManager.playStaticPulse()
-            val types = listOf("Poltergeist", "Phantom", "Schattenwesen", "EVP-Aura")
+            val types = listOf("Poltergeist", "Phantom", "Schattenwesen", "EVP-Aura", "Arch-Dämon", "Astral-Geist")
             val ghostType = types[Random.nextInt(types.size)]
 
             val response = spiritAiEngine.generateSpiritResponse(
@@ -1827,6 +1949,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
             _spiritResponse.value = response
             _isGeneratingSpiritResponse.value = false
+            _communicatorStatusText.value = "📻 GEIST SPRICHT ($ghostType): \"$response\""
 
             val logEntry = SpiritLogEntry(
                 question = questionText,
@@ -1844,20 +1967,54 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 soundManager = soundManager
             )
             triggerEntityDetectionVibration(_dangerLevel.value)
-        }
-    }
 
-    fun toggleMicListening() {
-        if (microphoneAnalyzer.isListening.value) {
-            microphoneAnalyzer.stopListening()
-        } else {
-            microphoneAnalyzer.startListening(viewModelScope) {
-                // Auto-trigger spirit query when voice speech burst detected into microphone
-                if (!_isGeneratingSpiritResponse.value) {
-                    askSpirit("Aura-Akustik-Eingabe über Mikrofon")
+            // Reset communicator status back to listening after speech finishes
+            launch {
+                delay(4000)
+                if (_isCommunicatorActive.value || microphoneAnalyzer.isListening.value) {
+                    _communicatorStatusText.value = "🎙️ MIKROFON LAUSCHT AUF DEINE STIMME..."
+                } else {
+                    _communicatorStatusText.value = "📻 ECHTZEIT-KOMMUNIKATOR: BEREIT"
                 }
             }
         }
+    }
+
+    fun askCommunicator(questionText: String) {
+        askSpirit(questionText)
+    }
+
+    fun toggleCommunicatorMode(forceActive: Boolean? = null) {
+        val nextState = forceActive ?: !_isCommunicatorActive.value
+        _isCommunicatorActive.value = nextState
+        if (nextState) {
+            _communicatorStatusText.value = "🎙️ MIKROFON LAUSCHT AUF DEINE STIMME..."
+            microphoneAnalyzer.startListening(viewModelScope) {
+                // Auto-trigger spirit query when voice speech burst detected into microphone
+                if (!_isGeneratingSpiritResponse.value && !spiritTtsManager.isSpeaking.value) {
+                    _communicatorStatusText.value = "⚡ STIMME ERKANNT! GEISTER-ANTWORT WIRD ERSTELLT..."
+                    val randomInquiry = listOf(
+                        "Ist jemand im Raum anwesend?",
+                        "Wie heißt du?",
+                        "Bist du friedlich oder gefährlich?",
+                        "Warum bist du an diesen Ort gebunden?",
+                        "Brauchst du Licht und Erlösung?"
+                    ).random()
+                    askSpirit(randomInquiry)
+                }
+            }
+        } else {
+            _communicatorStatusText.value = "📻 ECHTZEIT-KOMMUNIKATOR: STANDBY"
+            microphoneAnalyzer.stopListening()
+        }
+    }
+
+    fun setCommunicatorSpeechThreshold(threshold: Float) {
+        microphoneAnalyzer.setSpeechThreshold(threshold)
+    }
+
+    fun toggleMicListening() {
+        toggleCommunicatorMode()
     }
 
     override fun onCleared() {

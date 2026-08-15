@@ -60,34 +60,25 @@ class SoundManager {
 
     fun playStaticPulse() {
         if (isMuted) return
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
-                // Short low frequency pulse
-                playSineTone(frequencyHz = 120, durationMs = 60, volume = 0.3f)
+                // Gruseliger Pink Noise Burst bevor der Geist spricht
+                val buffer = generatePinkNoiseTrack(durationMs = 150, volume = 0.22f)
+                playPcmTrack(buffer, 16000, 150L)
             } catch (_: Exception) {}
         }
     }
 
     /**
      * Plays short radio static burst for real-time Spirit Box frequency sweep noise.
+     * Nutzt jetzt einen Pink Noise Filter (1/f Rauschen) für gruseligeres Tuning zwischen den Frequenzen.
      */
     fun playRadioStaticSweep() {
         if (isMuted) return
-        scope.launch {
+        scope.launch(Dispatchers.IO) {
             try {
-                val sampleRate = 16000
-                val durationMs = 45
-                val numSamples = (sampleRate * (durationMs / 1000.0)).toInt()
-                val buffer = ByteArray(2 * numSamples)
-                var idx = 0
-                for (i in 0 until numSamples) {
-                    // White noise with envelope
-                    val noise = (Random.nextFloat() * 2f - 1f) * 0.25f
-                    val sampleVal = (noise * 32767).toInt().coerceIn(-32767, 32767).toShort()
-                    buffer[idx++] = (sampleVal.toInt() and 0x00ff).toByte()
-                    buffer[idx++] = (sampleVal.toInt() and 0xff00 ushr 8).toByte()
-                }
-                playPcmTrack(buffer, sampleRate, durationMs.toLong())
+                val buffer = generatePinkNoiseTrack(durationMs = 45, volume = 0.18f)
+                playPcmTrack(buffer, 16000, 45L)
             } catch (_: Exception) {}
         }
     }
@@ -242,33 +233,80 @@ class SoundManager {
         playPcmTrack(generatedSnd, sampleRate, durationMs.toLong())
     }
 
-    private fun playPcmTrack(buffer: ByteArray, sampleRate: Int, durationMs: Long) {
-        try {
-            val audioTrack = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setSampleRate(sampleRate)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                        .build()
-                )
-                .setBufferSizeInBytes(buffer.size)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .build()
+    private fun generatePinkNoiseTrack(durationMs: Int, volume: Float): ByteArray {
+        val sampleRate = 16000
+        val numSamples = (sampleRate * (durationMs / 1000.0)).toInt()
+        val buffer = ByteArray(2 * numSamples)
+        var idx = 0
+        var b0 = 0f; var b1 = 0f; var b2 = 0f; var b3 = 0f
+        var b4 = 0f; var b5 = 0f; var b6 = 0f
+        
+        for (i in 0 until numSamples) {
+            val white = (Random.nextFloat() * 2f - 1f)
+            b0 = 0.99886f * b0 + white * 0.0555179f
+            b1 = 0.99332f * b1 + white * 0.0750759f
+            b2 = 0.96900f * b2 + white * 0.1538520f
+            b3 = 0.86650f * b3 + white * 0.3104856f
+            b4 = 0.55000f * b4 + white * 0.5329522f
+            b5 = -0.7616f * b5 - white * 0.0168980f
+            val pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362f
+            b6 = white * 0.115926f
+            
+            val noise = (pink * volume).coerceIn(-1f, 1f)
+            val sampleVal = (noise * 32767).toInt().coerceIn(-32767, 32767).toShort()
+            buffer[idx++] = (sampleVal.toInt() and 0x00ff).toByte()
+            buffer[idx++] = (sampleVal.toInt() and 0xff00 ushr 8).toByte()
+        }
+        return buffer
+    }
 
-            audioTrack.write(buffer, 0, buffer.size)
-            audioTrack.play()
-            scope.launch {
-                kotlinx.coroutines.delay(durationMs + 100)
-                audioTrack.release()
-            }
-        } catch (_: Exception) {}
+    private fun playPcmTrack(buffer: ByteArray, sampleRate: Int, durationMs: Long) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val minBuf = AudioTrack.getMinBufferSize(
+                    sampleRate,
+                    AudioFormat.CHANNEL_OUT_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT
+                )
+                val bufferSize = if (minBuf > 0) minBuf else buffer.size
+
+                val audioTrack = AudioTrack.Builder()
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build()
+                    )
+                    .setAudioFormat(
+                        AudioFormat.Builder()
+                            .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                            .setSampleRate(sampleRate)
+                            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                            .build()
+                    )
+                    .setBufferSizeInBytes(bufferSize)
+                    .setTransferMode(AudioTrack.MODE_STREAM)
+                    .build()
+
+                audioTrack.play()
+
+                // Write in chunks to prevent large buffer allocations and blocking
+                var offset = 0
+                val chunkSize = bufferSize
+                while (offset < buffer.size) {
+                    val size = minOf(chunkSize, buffer.size - offset)
+                    val written = audioTrack.write(buffer, offset, size)
+                    if (written <= 0) break
+                    offset += written
+                }
+
+                kotlinx.coroutines.delay(100) // allow last chunk to play
+                try {
+                    audioTrack.stop()
+                    audioTrack.release()
+                } catch (_: Exception) {}
+            } catch (_: Exception) {}
+        }
     }
 
     fun release() {

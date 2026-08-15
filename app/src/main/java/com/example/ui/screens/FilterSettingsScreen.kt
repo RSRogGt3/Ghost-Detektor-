@@ -608,7 +608,7 @@ fun FilterSettingsScreen(
                         Text("SYSTEM INFORMATION", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace))
                     }
                     Text(
-                        text = "Geister-Detektor Pro v1.2\nInfra-Grün HUD & Spektral-Scanner Engine\nOffline & Gemini AI Spirit Box Protokoll",
+                        text = "Geister-Detektor Pro v1.3a\nInfra-Grün HUD & Spektral-Scanner Engine\nOffline & Gemini AI Spirit Box Protokoll",
                         style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace)
                     )
                     Button(
