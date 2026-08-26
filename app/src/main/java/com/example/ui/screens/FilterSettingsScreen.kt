@@ -553,6 +553,178 @@ fun FilterSettingsScreen(
                 }
             }
 
+
+            // Permissions Card
+            val context = LocalContext.current
+            var hasGpsPermission by remember { mutableStateOf(
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            ) }
+            var hasNotifPermission by remember { mutableStateOf(
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                } else true
+            ) }
+
+            val gpsLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+                hasGpsPermission = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true || permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            }
+
+            val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+                hasNotifPermission = isGranted
+            }
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = InfraGreenPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("System-Berechtigungen", color = InfraGreenTextPrimary, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (hasGpsPermission) "GPS (Maps): Aktiv" else "GPS (Maps): Fehlt",
+                            color = if (hasGpsPermission) InfraGreenTextPrimary else AlertInfraRed
+                        )
+                        Button(
+                            onClick = { gpsLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) },
+                            enabled = !hasGpsPermission,
+                            colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary)
+                        ) {
+                            Text("Freigeben", color = Color.Black)
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(8.dp))
+                    
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (hasNotifPermission) "Benachrichtigungen: Aktiv" else "Benachrichtigungen: Fehlt",
+                                color = if (hasNotifPermission) InfraGreenTextPrimary else AlertInfraRed
+                            )
+                            Button(
+                                onClick = { notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS) },
+                                enabled = !hasNotifPermission,
+                                colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary)
+                            ) {
+                                Text("Freigeben", color = Color.Black)
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+
+            // Map Configuration & Status Card
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth().testTag("maps_config_info_card")
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = InfraGreenPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "KARTEN & RADAR STATUS",
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                color = InfraGreenPrimary,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+
+                    Text(
+                        text = "Die Karten-Ansicht bietet nun zwei Modi: Die OpenStreetMap (OSM) Kartenansicht sowie das autarke Taktik-Radar.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = InfraGreenTextPrimary,
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp
+                        )
+                    )
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(InfraGreenSurfaceVariant)
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            text = "Hinweis zur Positionsbestimmung:",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = InfraGreenPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = "• OSM benötigt keinen API-Key.\n• GPS-Freigabe kann direkt im Karten-Tab erteilt werden.\n• Die eigene Position wird als blauer Punkt angezeigt.",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = InfraGreenTextPrimaryVariant,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp
+                            )
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            // Background Process & Energy
+            Card(
+                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
+                border = CardDefaults.outlinedCardBorder(enabled = true),
+                modifier = Modifier.fillMaxWidth().testTag("background_energy_card")
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.BatterySaver, contentDescription = null, tint = InfraGreenPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("HINTERGRUND & ENERGIE", style = MaterialTheme.typography.titleMedium.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                    }
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Hintergrundprozess aktiv", style = MaterialTheme.typography.bodyMedium.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace))
+                            Text("Ermöglicht der App, im Hintergrund nach Anomalien zu scannen", style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace, fontSize = 11.sp))
+                        }
+                        Switch(
+                            checked = backgroundScan247Enabled,
+                            onCheckedChange = { viewModel.toggleBackgroundScan247Enabled(context) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = Color.Black, checkedTrackColor = InfraGreenPrimary)
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
             // Security PIN / Lock Settings Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
@@ -608,7 +780,7 @@ fun FilterSettingsScreen(
                         Text("SYSTEM INFORMATION", style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace))
                     }
                     Text(
-                        text = "Geister-Detektor Pro v1.3a\nInfra-Grün HUD & Spektral-Scanner Engine\nOffline & Gemini AI Spirit Box Protokoll",
+                        text = "Geister-Detektor Pro v1.4\nInfra-Grün HUD & Spektral-Scanner Engine\nOffline & Gemini AI Spirit Box Protokoll",
                         style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace)
                     )
                     Button(

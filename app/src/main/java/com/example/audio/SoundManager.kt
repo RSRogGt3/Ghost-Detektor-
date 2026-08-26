@@ -113,6 +113,37 @@ class SoundManager {
         }
     }
 
+    /**
+     * Plays a sparkly, double-pitch chime for Geister-Coin rewards.
+     */
+    fun playCoinRewardSound() {
+        if (isMuted) return
+        scope.launch {
+            try {
+                toneGen?.startTone(ToneGenerator.TONE_PROP_PROMPT, 120)
+                kotlinx.coroutines.delay(100)
+                toneGen?.startTone(ToneGenerator.TONE_PROP_ACK, 160)
+            } catch (_: Exception) {}
+        }
+    }
+
+    /**
+     * Plays an epic triumphant fanfare for major milestone claims (e.g. 5 Geister/Dämonen/Vampire!).
+     */
+    fun playLevelUpFanfare() {
+        if (isMuted) return
+        scope.launch {
+            try {
+                toneGen?.startTone(ToneGenerator.TONE_CDMA_HIGH_L, 100)
+                kotlinx.coroutines.delay(120)
+                toneGen?.startTone(ToneGenerator.TONE_CDMA_MED_L, 100)
+                kotlinx.coroutines.delay(120)
+                toneGen?.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 350)
+                playSpectralSweep(durationMs = 800, startFreq = 440f, endFreq = 1200f, volume = 0.45f)
+            } catch (_: Exception) {}
+        }
+    }
+
     private fun playSubBassDrone(durationMs: Int, baseFreq: Float, volume: Float) {
         val sampleRate = 22050
         val numSamples = (sampleRate * (durationMs / 1000.0)).toInt()

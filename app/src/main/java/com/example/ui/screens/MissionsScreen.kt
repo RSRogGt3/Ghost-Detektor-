@@ -23,15 +23,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.MilitaryTech
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -39,7 +40,6 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -57,51 +57,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.ui.theme.AlertInfraRed
-import com.example.ui.theme.InfraGreenBorder
-import com.example.ui.theme.InfraGreenPrimary
-import com.example.ui.theme.InfraGreenSurface
-import com.example.ui.theme.InfraGreenSurfaceVariant
-import com.example.ui.theme.InfraGreenTextPrimary
-import com.example.ui.theme.InfraGreenTextPrimaryVariant
+import com.example.data.GhostRewardCatalog
+import com.example.data.GhostRewardMilestone
+import com.example.data.GhostShopUpgrade
+import com.example.data.RewardCategory
+import com.example.ui.components.CelebrationRewardDialog
 import com.example.ui.viewmodel.GhostViewModel
 
-enum class MissionDifficultyTier(
-    val displayName: String,
-    val badgeIcon: String,
-    val color: Color,
-    val xpReward: Int
-) {
-    BRONZE("Bronze (1-10)", "🥉", Color(0xFFCD7F32), 100),
-    SILVER("Silber (1-25)", "🥈", Color(0xFFC0C0C0), 250),
-    GOLD("Gold (1-50)", "🥇", Color(0xFFFFD700), 500),
-    PLATINUM("Platin (1-100)", "💠", Color(0xFF00E5FF), 1000),
-    DIAMOND("Großmeister (1-150+)", "💎", Color(0xFFFF007F), 2500)
-}
-
-enum class MissionCategory(val label: String) {
-    ALL("ALLE STUFEN"),
-    TIER_10("1-10 BASIS"),
-    TIER_50("1-50 PROFI"),
-    TIER_100("1-100 MEISTER"),
-    HUNTING("DÄMONEN & VAMPIRE"),
-    PORTALS("DIMENSIONEN"),
-    COMMUNICATION("EVP-FUNK")
-}
-
-data class MissionItem(
-    val id: String,
-    val title: String,
-    val description: String,
-    val current: Int,
-    val target: Int,
-    val tier: MissionDifficultyTier,
-    val category: String,
-    val iconColor: Color
-) {
-    val isCompleted: Boolean get() = current >= target
-    val progress: Float get() = (current.toFloat() / target.toFloat()).coerceIn(0f, 1f)
-    val remaining: Int get() = (target - current).coerceAtLeast(0)
+enum class MissionsScreenTab(val title: String, val icon: String) {
+    REWARDS("ERFOLGE & BELOHNUNGEN", "🏆"),
+    SHOP("GEISTER-SHOP", "🛒"),
+    TROPHIES("TITEL & STATS", "📜")
 }
 
 @Composable
@@ -109,518 +75,989 @@ fun MissionsScreen(
     viewModel: GhostViewModel,
     modifier: Modifier = Modifier
 ) {
-    val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
-    val detections by viewModel.allDetections.collectAsStateWithLifecycle()
+    val ghostCoins by viewModel.ghostCoins.collectAsStateWithLifecycle()
+    val totalCoinsEarned by viewModel.totalCoinsEarned.collectAsStateWithLifecycle()
+    val claimedMilestoneIds by viewModel.claimedMilestoneIds.collectAsStateWithLifecycle()
+    val purchasedUpgrades by viewModel.purchasedUpgradeLevels.collectAsStateWithLifecycle()
+    val celebrationMilestone by viewModel.celebrationMilestone.collectAsStateWithLifecycle()
+    val allDetections by viewModel.allDetections.collectAsStateWithLifecycle()
+    val evpList by viewModel.spiritPhraseLog.collectAsStateWithLifecycle()
     val filterMode by viewModel.currentFilterMode.collectAsStateWithLifecycle()
-    val spiritLogList by viewModel.spiritPhraseLog.collectAsStateWithLifecycle()
     val primaryColor = filterMode.primaryColor
 
-    var selectedCategory by remember { mutableStateOf(MissionCategory.ALL) }
+    var currentTab by remember { mutableStateOf(MissionsScreenTab.REWARDS) }
+    var selectedCategory by remember { mutableStateOf(RewardCategory.ALL) }
 
-    val totalDetections = detections.size
-    val capturedCount = detections.count { it.type.contains("GEFANGEN", ignoreCase = true) || it.name.contains("GEFANGEN", ignoreCase = true) || it.type.contains("DÄMON", ignoreCase = true) || it.type.contains("VAMPIR", ignoreCase = true) }
-    val closedRiftsCount = detections.count { it.type.contains("DIMENSION", ignoreCase = true) || it.name.contains("VERRIEGELT", ignoreCase = true) || it.type.contains("RISS", ignoreCase = true) }
-    val favoritesCount = detections.count { it.isFavorite }
-    val spiritBoxCount = spiritLogList.size
-
-    val allMissions = remember(totalDetections, capturedCount, closedRiftsCount, favoritesCount, spiritBoxCount) {
-        listOf(
-            // --- 1-10 Tier: Bronze Stufe ---
-            MissionItem(
-                id = "hunt_10",
-                title = "Spektral-Spürhund I",
-                description = "Erfasse 10 paranormale Entitäten oder Spektral-Anomalien.",
-                current = totalDetections,
-                target = 10,
-                tier = MissionDifficultyTier.BRONZE,
-                category = "GEISTERJAGD",
-                iconColor = Color(0xFF00FF88)
-            ),
-            MissionItem(
-                id = "demon_10",
-                title = "Exorzisten-Lehrling I",
-                description = "Fange 10 Dämonen oder Vampire mit der Spektral-Falle.",
-                current = capturedCount,
-                target = 10,
-                tier = MissionDifficultyTier.BRONZE,
-                category = "DÄMONEN & VAMPIRE",
-                iconColor = Color(0xFFFF0055)
-            ),
-            MissionItem(
-                id = "portal_10",
-                title = "Dimensions-Wächter I",
-                description = "Schließe und versiegele 10 interdimensionale Raum-Zeit-Risse.",
-                current = closedRiftsCount,
-                target = 10,
-                tier = MissionDifficultyTier.BRONZE,
-                category = "DIMENSIONEN",
-                iconColor = Color(0xFF00B0FF)
-            ),
-            MissionItem(
-                id = "evp_10",
-                title = "Äther-Funkamateur I",
-                description = "Führe 10 erfolgreiche EVP-Kommunikationen über den Kommunikator.",
-                current = spiritBoxCount,
-                target = 10,
-                tier = MissionDifficultyTier.BRONZE,
-                category = "EVP-FUNK",
-                iconColor = Color(0xFFFFCC00)
-            ),
-            MissionItem(
-                id = "fav_10",
-                title = "Archivar-Katalog I",
-                description = "Markiere 10 wichtige Phänomene als Favoriten im Verlauf.",
-                current = favoritesCount,
-                target = 10,
-                tier = MissionDifficultyTier.BRONZE,
-                category = "ARCHIV",
-                iconColor = Color(0xFFBB33FF)
-            ),
-
-            // --- 1-25 Tier: Silber Stufe ---
-            MissionItem(
-                id = "hunt_25",
-                title = "Geister-Jäger II (Silber)",
-                description = "Erforsche und katalogisiere 25 paranormale Manifestationen.",
-                current = totalDetections,
-                target = 25,
-                tier = MissionDifficultyTier.SILVER,
-                category = "GEISTERJAGD",
-                iconColor = Color(0xFF00FF88)
-            ),
-            MissionItem(
-                id = "demon_25",
-                title = "Dämonen-Inquisitor II",
-                description = "Banne 25 Höllenfürsten, Arch-Dämonen oder Astral-Vampire.",
-                current = capturedCount,
-                target = 25,
-                tier = MissionDifficultyTier.SILVER,
-                category = "DÄMONEN & VAMPIRE",
-                iconColor = Color(0xFFFF0055)
-            ),
-            MissionItem(
-                id = "portal_25",
-                title = "Nexus-Siegel-Meister II",
-                description = "Stabilisiere 25 kollabierende Portal-Singularitäten.",
-                current = closedRiftsCount,
-                target = 25,
-                tier = MissionDifficultyTier.SILVER,
-                category = "DIMENSIONEN",
-                iconColor = Color(0xFF00B0FF)
-            ),
-            MissionItem(
-                id = "evp_25",
-                title = "Geister-Medium II",
-                description = "Empfange 25 Stimmenbotschaften aus dem Jenseits.",
-                current = spiritBoxCount,
-                target = 25,
-                tier = MissionDifficultyTier.SILVER,
-                category = "EVP-FUNK",
-                iconColor = Color(0xFFFFCC00)
-            ),
-
-            // --- 1-50 Tier: Gold Stufe ---
-            MissionItem(
-                id = "hunt_50",
-                title = "Parapsychologie-Veteran (1-50)",
-                description = "Dokumentiere 50 nachgewiesene paranormale Phänomene.",
-                current = totalDetections,
-                target = 50,
-                tier = MissionDifficultyTier.GOLD,
-                category = "GEISTERJAGD",
-                iconColor = Color(0xFF00FF88)
-            ),
-            MissionItem(
-                id = "demon_50",
-                title = "Infernale Auslöschung (1-50)",
-                description = "Fange und isoliere 50 gefährliche Dämonen & Vampir-Wesen.",
-                current = capturedCount,
-                target = 50,
-                tier = MissionDifficultyTier.GOLD,
-                category = "DÄMONEN & VAMPIRE",
-                iconColor = Color(0xFFFF0055)
-            ),
-            MissionItem(
-                id = "portal_50",
-                title = "Multiversum-Schildwache (1-50)",
-                description = "Versiegele 50 Risse zwischen den Realitätsebenen.",
-                current = closedRiftsCount,
-                target = 50,
-                tier = MissionDifficultyTier.GOLD,
-                category = "DIMENSIONEN",
-                iconColor = Color(0xFF00B0FF)
-            ),
-            MissionItem(
-                id = "evp_50",
-                title = "EVP-Transkript-Pionier (1-50)",
-                description = "Entschlüssele 50 spektrale Audio-Sätze und Wortfragmente.",
-                current = spiritBoxCount,
-                target = 50,
-                tier = MissionDifficultyTier.GOLD,
-                category = "EVP-FUNK",
-                iconColor = Color(0xFFFFCC00)
-            ),
-
-            // --- 1-100 Tier: Platin Stufe ---
-            MissionItem(
-                id = "hunt_100",
-                title = "Meister-Okkultist (1-100)",
-                description = "Erreiche 100 vollständige Spektral-Aufzeichnungen im Datenarchiv.",
-                current = totalDetections,
-                target = 100,
-                tier = MissionDifficultyTier.PLATINUM,
-                category = "GEISTERJAGD",
-                iconColor = Color(0xFF00E5FF)
-            ),
-            MissionItem(
-                id = "demon_100",
-                title = "Dämonen-Erzfeind (1-100)",
-                description = "Banne 100 unheilige Entitäten in die Spektral-Falle.",
-                current = capturedCount,
-                target = 100,
-                tier = MissionDifficultyTier.PLATINUM,
-                category = "DÄMONEN & VAMPIRE",
-                iconColor = Color(0xFFFF0055)
-            ),
-            MissionItem(
-                id = "portal_100",
-                title = "Raum-Zeit-Kollaps-Verhinderer (1-100)",
-                description = "Schließe 100 Dimensionsrisse und bewahre die irdische Realität.",
-                current = closedRiftsCount,
-                target = 100,
-                tier = MissionDifficultyTier.PLATINUM,
-                category = "DIMENSIONEN",
-                iconColor = Color(0xFF00B0FF)
-            ),
-            MissionItem(
-                id = "evp_100",
-                title = "Brücke zum Jenseits (1-100)",
-                description = "Führe 100 Zwei-Wege-Dialoge über die Spirit Box & Mikrofon.",
-                current = spiritBoxCount,
-                target = 100,
-                tier = MissionDifficultyTier.PLATINUM,
-                category = "EVP-FUNK",
-                iconColor = Color(0xFFFFCC00)
-            ),
-
-            // --- 1-150+ Tier: Großmeister Diamant Stufe ---
-            MissionItem(
-                id = "hunt_150",
-                title = "Legende der Schattenwelt (1-150)",
-                description = "Katalogisiere 150 paranormale Entitäten in der Datenbank.",
-                current = totalDetections,
-                target = 150,
-                tier = MissionDifficultyTier.DIAMOND,
-                category = "GEISTERJAGD",
-                iconColor = Color(0xFFFF007F)
-            ),
-            MissionItem(
-                id = "demon_150",
-                title = "Ewiger Bann-Großmeister (1-150)",
-                description = "Fange 150 Dämonen & Astral-Vampire für ewigen Frieden.",
-                current = capturedCount,
-                target = 150,
-                tier = MissionDifficultyTier.DIAMOND,
-                category = "DÄMONEN & VAMPIRE",
-                iconColor = Color(0xFFFF0055)
-            )
-        )
-    }
-
-    val filteredMissions = remember(allMissions, selectedCategory) {
-        when (selectedCategory) {
-            MissionCategory.ALL -> allMissions
-            MissionCategory.TIER_10 -> allMissions.filter { it.target <= 10 }
-            MissionCategory.TIER_50 -> allMissions.filter { it.target in 25..50 }
-            MissionCategory.TIER_100 -> allMissions.filter { it.target >= 100 }
-            MissionCategory.HUNTING -> allMissions.filter { it.category == "DÄMONEN & VAMPIRE" }
-            MissionCategory.PORTALS -> allMissions.filter { it.category == "DIMENSIONEN" }
-            MissionCategory.COMMUNICATION -> allMissions.filter { it.category == "EVP-FUNK" }
+    // Calculate Ready to Claim Milestones
+    val readyToClaimMilestones = remember(allDetections, evpList, claimedMilestoneIds) {
+        GhostRewardCatalog.allMilestones.filter { milestone ->
+            val count = viewModel.getMilestoneCurrentCount(milestone, allDetections, evpList.size)
+            count >= milestone.targetCount && !claimedMilestoneIds.contains(milestone.id)
         }
     }
 
-    val totalCompleted = allMissions.count { it.isCompleted }
-    val totalXpEarned = allMissions.filter { it.isCompleted }.sumOf { it.tier.xpReward }
-    val maxPossibleXp = allMissions.sumOf { it.tier.xpReward }
-
-    val userRank = when {
-        totalXpEarned >= 8000 -> "GRANDMASTER V (LEGENDE)"
-        totalXpEarned >= 4500 -> "EXORZIST-OFFIZIER IV"
-        totalXpEarned >= 2000 -> "PARAPSYCHOLOGE III"
-        totalXpEarned >= 750 -> "GEISTERJÄGER-ERMITTLER II"
-        else -> "REKRUT-ANFÄNGER I"
+    // Rank & XP Calculation
+    val totalXp = remember(allDetections, claimedMilestoneIds, totalCoinsEarned) {
+        val milestoneXp = GhostRewardCatalog.allMilestones
+            .filter { claimedMilestoneIds.contains(it.id) }
+            .sumOf { it.xpReward }
+        allDetections.size * 50 + milestoneXp + (totalCoinsEarned / 2)
     }
 
-    Column(
+    val (currentRankTitle, rankTier, nextRankXp) = remember(totalXp) {
+        when {
+            totalXp < 300 -> Triple("Novize des Okkulten", 1, 300)
+            totalXp < 800 -> Triple("Geister-Jäger Lehrling", 2, 800)
+            totalXp < 1800 -> Triple("Parapsychologe II", 3, 1800)
+            totalXp < 3500 -> Triple("Dämonen-Inquisitor", 4, 3500)
+            totalXp < 6000 -> Triple("Großmeister der Schattenwelt", 5, 6000)
+            else -> Triple("LEGENDE DES JENSEITS", 6, 10000)
+        }
+    }
+
+    // Active celebration popup
+    celebrationMilestone?.let { milestone ->
+        CelebrationRewardDialog(
+            milestone = milestone,
+            onDismiss = { viewModel.dismissCelebration() }
+        )
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .testTag("missions_screen")
     ) {
-        // Top Overview Dashboard
-        Card(
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF0B140F)),
-            border = BorderStroke(1.5.dp, primaryColor.copy(alpha = 0.8f)),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth().testTag("missions_overview_card")
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            // 1. TOP HERO HEADER: GHOST COINS & RANK WALLET
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0C130E)),
+                border = BorderStroke(1.5.dp, Color(0xFFFFD700).copy(alpha = 0.8f)),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.MilitaryTech,
-                            contentDescription = null,
-                            tint = Color(0xFFFFD700),
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Ghost Coin Counter
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2A2000))
+                                    .border(1.dp, Color(0xFFFFD700), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(text = "🪙", fontSize = 20.sp)
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "$ghostCoins COINS",
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        color = Color(0xFFFFD700),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 19.sp
+                                    )
+                                )
+                                Text(
+                                    text = "Gesamt gesammelt: $totalCoinsEarned 🪙",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color.Gray,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                            }
+                        }
+
+                        // Rank Badge Pill
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF14241B))
+                                .border(1.dp, primaryColor.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.MilitaryTech,
+                                    contentDescription = null,
+                                    tint = primaryColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "RANG $rankTier",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = primaryColor,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    // Rank Progress Bar
+                    val progressRatio = (totalXp.toFloat() / nextRankXp.toFloat()).coerceIn(0f, 1f)
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Text(
-                                text = "MISSIONEN & ERFOLGE",
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    color = primaryColor,
+                                text = "TITEL: $currentRankTitle",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFF00FFCC),
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp
+                                    fontSize = 10.5.sp
                                 )
                             )
                             Text(
-                                text = "RANG: $userRank",
+                                text = "$totalXp / $nextRankXp XP",
                                 style = MaterialTheme.typography.labelSmall.copy(
-                                    color = Color(0xFFFFD700),
+                                    color = Color.Gray,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 10.sp
+                                )
+                            )
+                        }
+                        LinearProgressIndicator(
+                            progress = { progressRatio },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = Color(0xFFFFD700),
+                            trackColor = Color(0xFF1C261E),
+                        )
+                    }
+
+                    // Multiplier info
+                    val lureMultiplier = viewModel.getCoinMultiplier()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "⚡ Bonus: +15 pro Fang | +35 Dämon/Vampir | +30 Portal",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = Color.LightGray,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 8.5.sp
+                            )
+                        )
+                        if (lureMultiplier > 1.0f) {
+                            Text(
+                                text = "${String.format(java.util.Locale.US, "%.2f", lureMultiplier)}x Ertrag",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = Color(0xFFFF0055),
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp
+                                    fontSize = 9.sp
                                 )
                             )
                         }
                     }
+                }
+            }
 
-                    Column(horizontalAlignment = Alignment.End) {
+            // 2. CLAIM READY MILESTONES NOTIFICATION BANNER (IF AVAILABLE)
+            if (readyToClaimMilestones.isNotEmpty()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF261D00)),
+                    border = BorderStroke(1.5.dp, Color(0xFFFFD700)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(10.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(text = "🎁", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = "${readyToClaimMilestones.size} BELOHNUNGEN ABHOLBEREIT!",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        color = Color(0xFFFFD700),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.5.sp
+                                    )
+                                )
+                                val totalCoinsReady = readyToClaimMilestones.sumOf { it.coinReward }
+                                Text(
+                                    text = "+$totalCoinsReady Geister-Coins warten auf dich!",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color(0xFFFFECC0),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 9.5.sp
+                                    )
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.claimAllAvailableMilestones(allDetections, evpList.size)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.testTag("claim_all_milestones_button")
+                        ) {
+                            Text(
+                                text = "ALLE EINLÖSEN",
+                                color = Color.Black,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.5.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 3. MAIN SECTION NAVIGATION TABS
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color(0xFF0E1611))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                MissionsScreenTab.values().forEach { tab ->
+                    val isSelected = currentTab == tab
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (isSelected) primaryColor.copy(alpha = 0.25f)
+                                else Color.Transparent
+                            )
+                            .border(
+                                width = if (isSelected) 1.dp else 0.dp,
+                                color = if (isSelected) primaryColor else Color.Transparent,
+                                shape = RoundedCornerShape(6.dp)
+                            )
+                            .clickable { currentTab = tab }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = tab.icon, fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = tab.title,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isSelected) primaryColor else Color.Gray,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 9.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
+            // TAB 1: REWARDS & MILESTONES
+            if (currentTab == MissionsScreenTab.REWARDS) {
+                // Category Filter Chips Row
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(vertical = 2.dp)
+                ) {
+                    items(RewardCategory.values()) { category ->
+                        val isSelected = selectedCategory == category
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { selectedCategory = category },
+                            label = {
+                                Text(
+                                    text = "${category.icon} ${category.label}",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 9.5.sp
+                                    )
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = primaryColor.copy(alpha = 0.3f),
+                                selectedLabelColor = primaryColor,
+                                containerColor = Color(0xFF0F1712),
+                                labelColor = Color.Gray
+                            ),
+                            border = BorderStroke(
+                                1.dp,
+                                if (isSelected) primaryColor else Color(0xFF1E2D22)
+                            )
+                        )
+                    }
+                }
+
+                // Filtered Milestones List
+                val filteredMilestones = remember(selectedCategory) {
+                    if (selectedCategory == RewardCategory.ALL) {
+                        GhostRewardCatalog.allMilestones
+                    } else {
+                        GhostRewardCatalog.allMilestones.filter { it.category == selectedCategory }
+                    }
+                }
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(filteredMilestones, key = { it.id }) { milestone ->
+                        val currentCount = viewModel.getMilestoneCurrentCount(milestone, allDetections, evpList.size)
+                        val isClaimed = claimedMilestoneIds.contains(milestone.id)
+                        val isReady = currentCount >= milestone.targetCount && !isClaimed
+
+                        MilestoneRewardCard(
+                            milestone = milestone,
+                            currentCount = currentCount,
+                            isClaimed = isClaimed,
+                            isReadyToClaim = isReady,
+                            onClaim = { viewModel.claimMilestone(milestone) }
+                        )
+                    }
+                }
+            }
+
+            // TAB 2: GHOST SHOP & OCCULT UPGRADES
+            if (currentTab == MissionsScreenTab.SHOP) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    item {
+                        // Shop Info Card
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF09140E)),
+                            border = BorderStroke(1.dp, Color(0xFF00FF88).copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = "🛒", fontSize = 22.sp)
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = "OKKULTER ARTEFAKTE- & UPGRADE-MARKT",
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            color = Color(0xFF00FF88),
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                    Text(
+                                        text = "Investiere Geister-Coins in Fallen-Geschwindigkeit, Radar-Reichweite & Schutzschilde.",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = Color.LightGray,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 9.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    items(GhostRewardCatalog.allShopUpgrades, key = { it.id }) { upgrade ->
+                        val currentLevel = viewModel.getUpgradeLevel(upgrade.id)
+                        val isMax = currentLevel >= upgrade.maxLevel
+                        val nextCost = upgrade.getCostForLevel(currentLevel)
+                        val canAfford = ghostCoins >= nextCost && !isMax
+
+                        ShopUpgradeCard(
+                            upgrade = upgrade,
+                            currentLevel = currentLevel,
+                            nextCost = nextCost,
+                            isMax = isMax,
+                            canAfford = canAfford,
+                            onBuy = { viewModel.buyShopUpgrade(upgrade) }
+                        )
+                    }
+                }
+            }
+
+            // TAB 3: TITLES, TROPHIES & LIFETIME STATS
+            if (currentTab == MissionsScreenTab.TROPHIES) {
+                val claimedMilestonesList = remember(claimedMilestoneIds) {
+                    GhostRewardCatalog.allMilestones.filter { claimedMilestoneIds.contains(it.id) }
+                }
+
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    item {
+                        // Stats Overview Card
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0B140F)),
+                            border = BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "📊 PARAPSYCHOLOGISCHE GESAMT-STATISTIK",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        color = Color(0xFF00E5FF),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                )
+
+                                val totalGhosts = allDetections.count {
+                                    it.type.contains("GEIST", ignoreCase = true) ||
+                                    it.type.contains("BEFREIT", ignoreCase = true) ||
+                                    it.type.contains("POLTERGEIST", ignoreCase = true)
+                                }
+                                val totalDemons = allDetections.count {
+                                    it.type.contains("DÄMON", ignoreCase = true) || it.type.contains("DEMON", ignoreCase = true)
+                                }
+                                val totalVampires = allDetections.count {
+                                    it.type.contains("VAMPIR", ignoreCase = true)
+                                }
+                                val totalPortals = allDetections.count {
+                                    it.type.contains("DIMENSION", ignoreCase = true) || it.name.contains("VERRIEGELT", ignoreCase = true)
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    StatBox(title = "👻 Geister", value = "$totalGhosts", color = Color(0xFF00FF88), modifier = Modifier.weight(1f))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    StatBox(title = "🔥 Dämonen", value = "$totalDemons", color = Color(0xFFFF0055), modifier = Modifier.weight(1f))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    StatBox(title = "🧛 Vampire", value = "$totalVampires", color = Color(0xFFBB33FF), modifier = Modifier.weight(1f))
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    StatBox(title = "🌀 Portale", value = "$totalPortals", color = Color(0xFF00B0FF), modifier = Modifier.weight(1f))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    StatBox(title = "🎙️ EVP-Stimmen", value = "${evpList.size}", color = Color(0xFFFFCC00), modifier = Modifier.weight(1f))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    StatBox(title = "🪙 Coins", value = "$totalCoinsEarned", color = Color(0xFFFFD700), modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+
+                    item {
                         Text(
-                            text = "$totalCompleted / ${allMissions.size} ERFÜLLT",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = Color(0xFF00FF88),
+                            text = "🏅 FREIGESCHALTETE EHRENTITEL & PERKS",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = Color(0xFFFFD700),
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            ),
+                            modifier = Modifier.padding(top = 6.dp)
+                        )
+                    }
+
+                    if (claimedMilestonesList.isEmpty()) {
+                        item {
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF0A0F0C)),
+                                border = BorderStroke(1.dp, Color.DarkGray),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(20.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Noch keine Meilensteine beansprucht. Fange Geister, Dämonen & Vampire, um Titel freizuschalten!",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = Color.Gray,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 11.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        items(claimedMilestonesList, key = { it.id }) { milestone ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1A13)),
+                                border = BorderStroke(1.dp, milestone.color.copy(alpha = 0.6f)),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(text = milestone.badgeIcon, fontSize = 26.sp)
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = milestone.unlockedTitle,
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                color = milestone.color,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.sp
+                                            )
+                                        )
+                                        Text(
+                                            text = "Perk: ${milestone.perkDescription}",
+                                            style = MaterialTheme.typography.bodySmall.copy(
+                                                color = Color.LightGray,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontSize = 10.sp
+                                            )
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF00FF88),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun MilestoneRewardCard(
+    milestone: GhostRewardMilestone,
+    currentCount: Int,
+    isClaimed: Boolean,
+    isReadyToClaim: Boolean,
+    onClaim: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(isReadyToClaim) }
+
+    val progress = (currentCount.toFloat() / milestone.targetCount.toFloat()).coerceIn(0f, 1f)
+    val remaining = (milestone.targetCount - currentCount).coerceAtLeast(0)
+
+    val containerColor = when {
+        isClaimed -> Color(0xFF08120C)
+        isReadyToClaim -> Color(0xFF1E1700)
+        else -> Color(0xFF0D1410)
+    }
+
+    val borderColor = when {
+        isClaimed -> Color(0xFF00FF88).copy(alpha = 0.4f)
+        isReadyToClaim -> Color(0xFFFFD700)
+        else -> milestone.color.copy(alpha = 0.35f)
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = BorderStroke(if (isReadyToClaim) 2.dp else 1.dp, borderColor),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .testTag("milestone_card_${milestone.id}")
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Top Row: Badge, Title & Status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Text(text = milestone.badgeIcon, fontSize = 22.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = milestone.title,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = if (isReadyToClaim) Color(0xFFFFD700) else Color.White,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp
+                            )
+                        )
+                        Text(
+                            text = if (expanded) milestone.description else "Tippe zum Erweitern",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.Gray,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 9.5.sp
+                            )
+                        )
+                    }
+                }
+
+                // Status Badge Pill
+                val statusText = when {
+                    isClaimed -> "✅ BEANSPRUCHT"
+                    isReadyToClaim -> "🎁 BEREIT!"
+                    else -> "⏳ IN ARBEIT"
+                }
+                val statusColor = when {
+                    isClaimed -> Color(0xFF00FF88)
+                    isReadyToClaim -> Color(0xFFFFD700)
+                    else -> Color.LightGray
+                }
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(statusColor.copy(alpha = 0.15f))
+                        .border(1.dp, statusColor.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                ) {
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = statusColor,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 8.5.sp
+                        )
+                    )
+                }
+            }
+
+            AnimatedVisibility(visible = expanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Progress Bar & Counter
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = if (isClaimed) "Erfolgreich abgeschlossen" else if (isReadyToClaim) "Meilenstein erreicht!" else "Noch $remaining bis zum Ziel",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isReadyToClaim) Color(0xFFFFD700) else Color.LightGray,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 9.sp
+                                )
+                            )
+                            Text(
+                                text = "$currentCount / ${milestone.targetCount}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = milestone.color,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.5.sp
+                                )
+                            )
+                        }
+
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = if (isReadyToClaim) Color(0xFFFFD700) else milestone.color,
+                            trackColor = Color(0xFF142018),
+                        )
+                    }
+
+                    // Rewards Row & Claim Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF282000))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "+${milestone.coinReward} 🪙 Coins",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color(0xFFFFD700),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp
+                                    )
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF002922))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "+${milestone.xpReward} XP",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color(0xFF00FFCC),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.sp
+                                    )
+                                )
+                            }
+                        }
+
+                        if (isReadyToClaim) {
+                            Button(
+                                onClick = onClaim,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD700)),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.testTag("claim_button_${milestone.id}")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "🎁", fontSize = 12.sp)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "BELOHNUNG HOLEN",
+                                        color = Color.Black,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 9.5.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ShopUpgradeCard(
+    upgrade: GhostShopUpgrade,
+    currentLevel: Int,
+    nextCost: Int,
+    isMax: Boolean,
+    canAfford: Boolean,
+    onBuy: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0C1610)),
+        border = BorderStroke(1.dp, upgrade.color.copy(alpha = 0.4f)),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .testTag("shop_card_${upgrade.id}")
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Text(text = upgrade.iconEmoji, fontSize = 24.sp)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = upgrade.title,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                color = upgrade.color,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp
                             )
                         )
                         Text(
-                            text = "$totalXpEarned / $maxPossibleXp XP",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color.LightGray,
+                            text = if (expanded) upgrade.subtitle else "Tippe zum Erweitern",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color.Gray,
                                 fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp
+                                fontSize = 9.5.sp
                             )
                         )
                     }
                 }
 
-                LinearProgressIndicator(
-                    progress = { (totalXpEarned.toFloat() / maxPossibleXp.toFloat()).coerceIn(0f, 1f) },
+                // Level indicator
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = primaryColor,
-                    trackColor = Color(0xFF18231C)
-                )
-
-                // Quick stats summary
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color(0xFF16251C))
+                        .border(1.dp, upgrade.color.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
                     Text(
-                        text = "🥉 Bronze: ${allMissions.count { it.tier == MissionDifficultyTier.BRONZE && it.isCompleted }}/${allMissions.count { it.tier == MissionDifficultyTier.BRONZE }}",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFCD7F32), fontFamily = FontFamily.Monospace, fontSize = 9.5.sp)
-                    )
-                    Text(
-                        text = "🥈 Silber: ${allMissions.count { it.tier == MissionDifficultyTier.SILVER && it.isCompleted }}/${allMissions.count { it.tier == MissionDifficultyTier.SILVER }}",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFC0C0C0), fontFamily = FontFamily.Monospace, fontSize = 9.5.sp)
-                    )
-                    Text(
-                        text = "🥇 Gold: ${allMissions.count { it.tier == MissionDifficultyTier.GOLD && it.isCompleted }}/${allMissions.count { it.tier == MissionDifficultyTier.GOLD }}",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFFFD700), fontFamily = FontFamily.Monospace, fontSize = 9.5.sp)
-                    )
-                    Text(
-                        text = "💠 Platin: ${allMissions.count { it.tier == MissionDifficultyTier.PLATINUM && it.isCompleted }}/${allMissions.count { it.tier == MissionDifficultyTier.PLATINUM }}",
-                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF00E5FF), fontFamily = FontFamily.Monospace, fontSize = 9.5.sp)
+                        text = if (isMax) "MAX" else "STUFE $currentLevel/${upgrade.maxLevel}",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = if (isMax) Color(0xFFFFD700) else upgrade.color,
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 9.sp
+                        )
                     )
                 }
             }
-        }
 
-        // Difficulty / Category Filter Chips
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            items(MissionCategory.values()) { category ->
-                val isSelected = selectedCategory == category
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { selectedCategory = category }
-                        .border(
-                            1.dp,
-                            if (isSelected) primaryColor else InfraGreenBorder,
-                            RoundedCornerShape(8.dp)
-                        ),
-                    color = if (isSelected) primaryColor else Color(0xFF0E1712),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
+            AnimatedVisibility(visible = expanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Current / Next Level Description
                     Text(
-                        text = category.label,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (isSelected) Color.Black else InfraGreenTextPrimary,
+                        text = upgrade.getLevelDescription(currentLevel),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color(0xFFD4E8DC),
                             fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
                             fontSize = 10.sp
                         )
                     )
-                }
-            }
-        }
 
-        // Missions List
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(filteredMissions, key = { it.id }) { mission ->
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (mission.isCompleted) Color(0xFF091F14) else Color(0xFF0C1013)
-                    ),
-                    border = BorderStroke(
-                        1.dp,
-                        if (mission.isCompleted) Color(0xFF00FF88).copy(alpha = 0.8f) else mission.tier.color.copy(alpha = 0.4f)
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.fillMaxWidth().testTag("mission_item_${mission.id}")
-                ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    // Purchase Button
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = if (mission.isCompleted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                                    contentDescription = null,
-                                    tint = if (mission.isCompleted) Color(0xFF00FF88) else Color.Gray,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = mission.title,
-                                            style = MaterialTheme.typography.titleSmall.copy(
-                                                color = if (mission.isCompleted) Color(0xFF00FF88) else Color.White,
-                                                fontFamily = FontFamily.Monospace,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 13.sp
-                                            )
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = mission.tier.badgeIcon,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        Text(
-                                            text = "[${mission.category}]",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                color = mission.iconColor,
-                                                fontFamily = FontFamily.Monospace,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        )
-                                        Text(
-                                            text = "• +${mission.tier.xpReward} XP",
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                color = mission.tier.color,
-                                                fontFamily = FontFamily.Monospace,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-
+                        if (isMax) {
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(if (mission.isCompleted) Color(0xFF00FF88).copy(alpha = 0.2f) else Color(0xFF16201B))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    .background(Color(0xFF14241B))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
                             ) {
                                 Text(
-                                    text = "${mission.current.coerceAtMost(mission.target)} / ${mission.target}",
+                                    text = "MAXIMALE STUFE ERREICHT",
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color = if (mission.isCompleted) Color(0xFF00FF88) else Color.LightGray,
+                                        color = Color(0xFF00FF88),
                                         fontFamily = FontFamily.Monospace,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
+                                        fontSize = 9.5.sp
                                     )
                                 )
                             }
-                        }
-
-                        Text(
-                            text = mission.description,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color.White.copy(alpha = 0.85f),
-                                fontSize = 11.sp
-                            )
-                        )
-
-                        // Progress bar with remaining amount indicator
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            LinearProgressIndicator(
-                                progress = { mission.progress },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(5.dp)
-                                    .clip(RoundedCornerShape(3.dp)),
-                                color = if (mission.isCompleted) Color(0xFF00FF88) else mission.tier.color,
-                                trackColor = Color(0xFF171F1B)
-                            )
-                            if (!mission.isCompleted) {
-                                Text(
-                                    text = "Noch ${mission.remaining} bis zum Abschluss",
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        color = Color.Gray,
+                        } else {
+                            Button(
+                                onClick = onBuy,
+                                enabled = canAfford,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (canAfford) Color(0xFFFFD700) else Color(0xFF262626),
+                                    disabledContainerColor = Color(0xFF1F1F1F)
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                modifier = Modifier.testTag("buy_upgrade_${upgrade.id}")
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(text = "🪙", fontSize = 12.sp)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "AUFRÜSTEN ($nextCost COINS)",
+                                        color = if (canAfford) Color.Black else Color.Gray,
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 9.sp
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
                                     )
-                                )
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun StatBox(
+    title: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF080E0A))
+            .border(1.dp, color.copy(alpha = 0.35f), RoundedCornerShape(8.dp))
+            .padding(8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = color,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = Color.Gray,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 8.5.sp
+                )
+            )
         }
     }
 }

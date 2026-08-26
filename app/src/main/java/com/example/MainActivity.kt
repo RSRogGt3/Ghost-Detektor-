@@ -31,13 +31,15 @@ import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.ui.components.AppSecurityLockOverlay
+import com.example.ui.components.GhostHudToastSnackbar
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -67,6 +69,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.i18n.AppLanguage
 import com.example.ui.i18n.UiStrings
 import com.example.ui.screens.FilterSettingsScreen
+import com.example.ui.screens.MapScreen
 import com.example.ui.screens.HistoryScreen
 import com.example.ui.screens.ScannerScreen
 import com.example.ui.screens.SpiritBoxScreen
@@ -86,7 +89,8 @@ enum class GhostNavDestination(
     SCANNER(Icons.Default.Radar, "nav_scanner"),
     SPIRIT_BOX(Icons.Default.RecordVoiceOver, "nav_spirit_box"),
     HISTORY(Icons.Default.History, "nav_history"),
-    LEXICON(Icons.Default.MenuBook, "nav_lexicon"),
+    MAP(Icons.Default.Map, "nav_map"),
+    LEXICON(Icons.AutoMirrored.Filled.MenuBook, "nav_lexicon"),
     MISSIONS(Icons.Default.EmojiEvents, "nav_missions"),
     SETTINGS(Icons.Default.Tune, "nav_settings");
 
@@ -94,6 +98,7 @@ enum class GhostNavDestination(
         SCANNER -> UiStrings.getNavScanner(lang)
         SPIRIT_BOX -> UiStrings.getNavSpiritBox(lang)
         HISTORY -> UiStrings.getNavHistory(lang)
+        MAP -> "KARTE"
         LEXICON -> "LEXIKON"
         MISSIONS -> "MISSIONEN"
         SETTINGS -> UiStrings.getNavSettings(lang)
@@ -129,6 +134,7 @@ fun GhostAppMainContent(
     val autoLockOnBackground by viewModel.autoLockOnBackground.collectAsStateWithLifecycle()
     val lockoutTimerSeconds by viewModel.lockoutTimerSeconds.collectAsStateWithLifecycle()
     val failedPinAttempts by viewModel.failedPinAttempts.collectAsStateWithLifecycle()
+    val toastNotification by viewModel.toastNotification.collectAsStateWithLifecycle()
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -162,7 +168,8 @@ fun GhostAppMainContent(
                 Manifest.permission.CAMERA,
                 Manifest.permission.RECORD_AUDIO,
                 Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.ACCESS_COARSE_LOCATION
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) Manifest.permission.POST_NOTIFICATIONS else Manifest.permission.ACCESS_COARSE_LOCATION
             )
         )
     }
@@ -220,6 +227,7 @@ fun GhostAppMainContent(
                 GhostNavDestination.SCANNER -> ScannerScreen(viewModel = viewModel)
                 GhostNavDestination.SPIRIT_BOX -> SpiritBoxScreen(viewModel = viewModel)
                 GhostNavDestination.HISTORY -> HistoryScreen(viewModel = viewModel)
+                GhostNavDestination.MAP -> MapScreen(viewModel = viewModel)
                 GhostNavDestination.LEXICON -> LexiconScreen(viewModel = viewModel)
                 GhostNavDestination.MISSIONS -> MissionsScreen(viewModel = viewModel)
                 GhostNavDestination.SETTINGS -> FilterSettingsScreen(viewModel = viewModel)
@@ -304,6 +312,25 @@ fun GhostAppMainContent(
                 }
             }
 
+            // Floating Global Ghost HUD Toast / Snackbar Notification System
+            GhostHudToastSnackbar(
+                notification = toastNotification,
+                onDismiss = { viewModel.dismissToast() },
+                onActionClick = { targetDest ->
+                    if (targetDest == "MISSIONS") {
+                        currentDestination = GhostNavDestination.MISSIONS
+                    } else if (targetDest == "LEXICON") {
+                        currentDestination = GhostNavDestination.LEXICON
+                    } else if (targetDest == "SPIRIT_BOX") {
+                        currentDestination = GhostNavDestination.SPIRIT_BOX
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 46.dp)
+            )
+
             // Top-Level Fullscreen Security Lock Overlay (Access Protection)
             AppSecurityLockOverlay(
                 isLocked = isAppLocked && isSecurityEnabled,
@@ -321,3 +348,6 @@ fun GhostAppMainContent(
     }
 }
 // Trigger rebuild
+// Emulator Connection Refresh
+// Force UI reload
+// Secrets updated

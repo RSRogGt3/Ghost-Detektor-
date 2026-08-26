@@ -166,6 +166,9 @@ fun ScannerScreen(
     val backgroundScan247Enabled by viewModel.backgroundScan247Enabled.collectAsStateWithLifecycle()
     val isBatterySaverEnabled by viewModel.isBatterySaverEnabled.collectAsStateWithLifecycle()
     val isBatterySaverThrottling by viewModel.isBatterySaverThrottling.collectAsStateWithLifecycle()
+    val ghostCoins by viewModel.ghostCoins.collectAsStateWithLifecycle()
+    val recentCoinToast by viewModel.recentCoinRewardToast.collectAsStateWithLifecycle()
+    val celebrationMilestone by viewModel.celebrationMilestone.collectAsStateWithLifecycle()
 
     var showSaveDialog by remember { mutableStateOf(false) }
     var captureName by remember { mutableStateOf("") }
@@ -174,6 +177,14 @@ fun ScannerScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val imageCapture = remember { ImageCapture.Builder().build() }
+
+    // Active celebration popup
+    celebrationMilestone?.let { milestone ->
+        com.example.ui.components.CelebrationRewardDialog(
+            milestone = milestone,
+            onDismiss = { viewModel.dismissCelebration() }
+        )
+    }
 
     Box(
         modifier = modifier
@@ -260,6 +271,40 @@ fun ScannerScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            // Recent Coin Reward Toast Banner
+            recentCoinToast?.let { toastMsg ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2E2200)),
+                    border = BorderStroke(1.5.dp, Color(0xFFFFD700)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .testTag("coin_reward_toast")
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "🪙", fontSize = 18.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = toastMsg,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color(0xFFFFD700),
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
             // Liberation Banner Notification Card
             liberatedBannerMessage?.let { bannerMsg ->
                 Card(
@@ -308,7 +353,7 @@ fun ScannerScreen(
                     modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Header Row with Title and Quick Buttons
+                    // Header Row with Title, Coins Pill and Quick Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -328,10 +373,33 @@ fun ScannerScreen(
                                     color = filterMode.primaryColor,
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
+                                    fontSize = 13.sp,
                                     letterSpacing = 1.sp
                                 )
                             )
+                        }
+
+                        // Ghost Coin Mini Wallet Pill
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF261D00))
+                                .border(1.dp, Color(0xFFFFD700).copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(text = "🪙", fontSize = 12.sp)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "$ghostCoins",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = Color(0xFFFFD700),
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
                         }
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -615,27 +683,6 @@ fun ScannerScreen(
                 }
             }
 
-            // SECTION: DIMENSIONEN & DÄMONEN-SIEGEL
-            if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.DIMENSIONS) {
-                CaptureAndPortalCard(
-                    activeRiftsCount = radarBlips.count { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT },
-                    capturedCount = capturedCount,
-                    isClosingDimension = isClosingDimension,
-                    isCapturingEntity = isCapturingEntity,
-                    primaryColor = filterMode.primaryColor,
-                    activeSigil = activeSigil,
-                    sigilTimerSeconds = sigilTimerSeconds,
-                    activeDimension = activeDimension,
-                    autoDimensionSealingEnabled = autoDimensionSealingEnabled,
-                    onToggleAutoDimensionSealing = { viewModel.toggleAutoDimensionSealing() },
-                    onCloseDimension = { viewModel.closeDimensionRift() },
-                    onSpawnDimension = { viewModel.spawnDimensionRift() },
-                    onCaptureEntity = { viewModel.captureEntity() },
-                    onSpawnThreat = { viewModel.spawnDemonOrVampire() },
-                    onOpenSigilForge = { showSigilForgeDialog = true }
-                )
-            }
-
             // SECTION: EMF, SPEKTRUM & MAGNETFELD
             if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.EMF_FILTER) {
                 // EMF Feldstärke Meter Gauge
@@ -787,6 +834,27 @@ fun ScannerScreen(
                         )
                     }
                 }
+            }
+
+            // SECTION: DIMENSIONEN & DÄMONEN-SIEGEL
+            if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.DIMENSIONS) {
+                CaptureAndPortalCard(
+                    activeRiftsCount = radarBlips.count { it.category == com.example.ui.components.EntityCategory.DIMENSION_RIFT },
+                    capturedCount = capturedCount,
+                    isClosingDimension = isClosingDimension,
+                    isCapturingEntity = isCapturingEntity,
+                    primaryColor = filterMode.primaryColor,
+                    activeSigil = activeSigil,
+                    sigilTimerSeconds = sigilTimerSeconds,
+                    activeDimension = activeDimension,
+                    autoDimensionSealingEnabled = autoDimensionSealingEnabled,
+                    onToggleAutoDimensionSealing = { viewModel.toggleAutoDimensionSealing() },
+                    onCloseDimension = { viewModel.closeDimensionRift() },
+                    onSpawnDimension = { viewModel.spawnDimensionRift() },
+                    onCaptureEntity = { viewModel.captureEntity() },
+                    onSpawnThreat = { viewModel.spawnDemonOrVampire() },
+                    onOpenSigilForge = { showSigilForgeDialog = true }
+                )
             }
 
             // SECTION: SPIRIT-BOX & AUDIO

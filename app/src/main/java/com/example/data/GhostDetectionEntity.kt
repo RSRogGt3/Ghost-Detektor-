@@ -17,5 +17,7 @@ data class GhostDetectionEntity(
     val notes: String = "",
     val spectralColorHex: String = "#00FF66",
     val isFavorite: Boolean = false,
-    val lastWords: String = "" // Spirit box response text if captured
+    val lastWords: String = "", // Spirit box response text if captured
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )

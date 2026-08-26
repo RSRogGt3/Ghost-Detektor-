@@ -2,7 +2,16 @@ package com.example.ui.viewmodel
 
 import com.example.data.DimensionPlane
 import com.example.data.SigilType
+import com.example.data.GhostRewardCatalog
+import com.example.data.GhostRewardMilestone
+import com.example.data.GhostShopUpgrade
+import com.example.data.RewardCategory
+import com.example.data.GhostToastNotification
+import com.example.data.ToastNotificationType
 import kotlinx.coroutines.flow.map
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 import android.app.Application
 import android.os.Build
@@ -53,8 +62,50 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     private val _appThemeColor = MutableStateFlow("GREEN")
     val appThemeColor: StateFlow<String> = _appThemeColor
 
+    private var currentLatitude: Double? = null
+    private var currentLongitude: Double? = null
+    private var currentLocationName: String? = null
+
+    fun updateCurrentLocation(lat: Double, lng: Double, locName: String? = null) {
+        currentLatitude = lat
+        currentLongitude = lng
+        currentLocationName = locName
+    }
+
     fun setAppThemeColor(color: String) {
         _appThemeColor.value = color
+    }
+
+    private val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(application)
+    
+    fun fetchRealLocation() {
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    currentLatitude = location.latitude
+                    currentLongitude = location.longitude
+                    
+                    try {
+                        val geocoder = android.location.Geocoder(getApplication(), java.util.Locale.getDefault())
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            geocoder.getFromLocation(location.latitude, location.longitude, 1) { addresses ->
+                                val address = addresses.firstOrNull()
+                                currentLocationName = address?.locality ?: address?.subAdminArea ?: "Unbekannter Ort"
+                            }
+                        } else {
+                            @Suppress("DEPRECATION")
+                            val addresses = geocoder.getFromLocation(location.latitude, location.longitude, 1)
+                            val address = addresses?.firstOrNull()
+                            currentLocationName = address?.locality ?: address?.subAdminArea ?: "Unbekannter Ort"
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        } catch (e: SecurityException) {
+            e.printStackTrace()
+        }
     }
     val sensorManager = GhostSensorManager(application)
     
@@ -68,6 +119,381 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
     // Shared Preferences & Security Lock State
     private val securitySharedPrefs = application.getSharedPreferences("ghost_app_security_prefs", android.content.Context.MODE_PRIVATE)
+
+    // Ghost Reward & Coin System State (Geister-Coins & Belohnungssystem)
+    private val rewardSharedPrefs = application.getSharedPreferences("ghost_reward_prefs", android.content.Context.MODE_PRIVATE)
+
+    private val _ghostCoins = MutableStateFlow(rewardSharedPrefs.getInt("ghost_coins", 50))
+    val ghostCoins: StateFlow<Int> = _ghostCoins.asStateFlow()
+
+    private val _totalCoinsEarned = MutableStateFlow(rewardSharedPrefs.getInt("total_coins_earned", 50))
+    val totalCoinsEarned: StateFlow<Int> = _totalCoinsEarned.asStateFlow()
+
+    private val _claimedMilestoneIds = MutableStateFlow(
+        rewardSharedPrefs.getStringSet("claimed_milestones", emptySet())?.toSet() ?: emptySet()
+    )
+    val claimedMilestoneIds: StateFlow<Set<String>> = _claimedMilestoneIds.asStateFlow()
+
+    private val _notifiedMilestoneIds = MutableStateFlow<Set<String>>(
+        rewardSharedPrefs.getStringSet("notified_milestones", emptySet())?.toSet() ?: emptySet()
+    )
+    val notifiedMilestoneIds: StateFlow<Set<String>> = _notifiedMilestoneIds.asStateFlow()
+
+    private val _purchasedUpgradeLevels = MutableStateFlow<Map<String, Int>>(loadPurchasedUpgradeLevels())
+    val purchasedUpgradeLevels: StateFlow<Map<String, Int>> = _purchasedUpgradeLevels.asStateFlow()
+
+    private val _recentCoinRewardToast = MutableStateFlow<String?>(null)
+    val recentCoinRewardToast: StateFlow<String?> = _recentCoinRewardToast.asStateFlow()
+
+    private val _celebrationMilestone = MutableStateFlow<GhostRewardMilestone?>(null)
+    val celebrationMilestone: StateFlow<GhostRewardMilestone?> = _celebrationMilestone.asStateFlow()
+
+    // Top-Level HUD Toast / Snackbar Notification Queue
+    private val _toastNotification = MutableStateFlow<GhostToastNotification?>(null)
+    val toastNotification: StateFlow<GhostToastNotification?> = _toastNotification.asStateFlow()
+
+    private val toastQueue = mutableListOf<GhostToastNotification>()
+    private var toastJob: Job? = null
+
+    fun showToastNotification(notification: GhostToastNotification) {
+        synchronized(toastQueue) {
+            // Avoid duplicate identical toasts in rapid succession
+            val isDuplicate = toastQueue.any { it.title == notification.title && it.description == notification.description } ||
+                    (_toastNotification.value?.title == notification.title && _toastNotification.value?.description == notification.description)
+            if (!isDuplicate) {
+                toastQueue.add(notification)
+            }
+        }
+        processNextToast()
+    }
+
+    private fun processNextToast() {
+        if (toastJob?.isActive == true) return
+        val nextToast = synchronized(toastQueue) {
+            if (toastQueue.isNotEmpty()) toastQueue.removeAt(0) else null
+        }
+        if (nextToast == null) {
+            _toastNotification.value = null
+            return
+        }
+
+        _toastNotification.value = nextToast
+        toastJob = viewModelScope.launch {
+            delay(nextToast.durationMs)
+            _toastNotification.value = null
+            delay(280L) // Wait for exit animation
+            toastJob = null
+            processNextToast()
+        }
+    }
+
+    fun dismissToast() {
+        toastJob?.cancel()
+        toastJob = null
+        _toastNotification.value = null
+        viewModelScope.launch {
+            delay(200L)
+            processNextToast()
+        }
+    }
+
+    private fun loadPurchasedUpgradeLevels(): Map<String, Int> {
+        val map = mutableMapOf<String, Int>()
+        GhostRewardCatalog.allShopUpgrades.forEach { upgrade ->
+            val level = rewardSharedPrefs.getInt("upgrade_lvl_${upgrade.id}", 0)
+            map[upgrade.id] = level
+        }
+        return map
+    }
+
+    fun getUpgradeLevel(upgradeId: String): Int {
+        return _purchasedUpgradeLevels.value[upgradeId] ?: 0
+    }
+
+    fun getCoinBonusPerEntity(): Int {
+        val coinUpgradeLvl = getUpgradeLevel("upgrade_coin_multiplier")
+        return 2 + (coinUpgradeLvl * 2)
+    }
+
+    fun getCoinMultiplier(): Float {
+        val lureLvl = getUpgradeLevel("upgrade_ecto_lure")
+        return 1.0f + (lureLvl * 0.25f)
+    }
+
+    fun awardCoins(baseAmount: Int, reason: String, playSound: Boolean = true) {
+        val multiplier = getCoinMultiplier()
+        val totalAward = (baseAmount * multiplier).toInt().coerceAtLeast(1)
+        val newBalance = _ghostCoins.value + totalAward
+        val newTotal = _totalCoinsEarned.value + totalAward
+
+        _ghostCoins.value = newBalance
+        _totalCoinsEarned.value = newTotal
+        _recentCoinRewardToast.value = "+$totalAward 🪙 $reason"
+
+        rewardSharedPrefs.edit()
+            .putInt("ghost_coins", newBalance)
+            .putInt("total_coins_earned", newTotal)
+            .apply()
+
+        val multSuffix = if (multiplier > 1.0f) " (${String.format(Locale.US, "%.1f", multiplier)}x Köder)" else ""
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.COIN_EARNED,
+                iconEmoji = "🪙",
+                title = "+$totalAward GEISTER-COINS$multSuffix",
+                description = reason,
+                badgeColorHex = 0xFFFFD700
+            )
+        )
+
+        if (playSound && _audioFeedbackEnabled.value) {
+            soundManager.playCoinRewardSound()
+        }
+    }
+
+    fun claimMilestone(milestone: GhostRewardMilestone) {
+        if (_claimedMilestoneIds.value.contains(milestone.id)) return
+
+        val newClaimed = _claimedMilestoneIds.value + milestone.id
+        _claimedMilestoneIds.value = newClaimed
+        rewardSharedPrefs.edit().putStringSet("claimed_milestones", newClaimed).apply()
+
+        val newBalance = _ghostCoins.value + milestone.coinReward
+        val newTotal = _totalCoinsEarned.value + milestone.coinReward
+        _ghostCoins.value = newBalance
+        _totalCoinsEarned.value = newTotal
+        rewardSharedPrefs.edit()
+            .putInt("ghost_coins", newBalance)
+            .putInt("total_coins_earned", newTotal)
+            .apply()
+
+        _celebrationMilestone.value = milestone
+        _recentCoinRewardToast.value = "🎁 +${milestone.coinReward} 🪙 ${milestone.title}!"
+
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.MILESTONE_CLAIMED,
+                iconEmoji = milestone.badgeIcon,
+                title = "BELOHNUNG EINGELÖST! 🎁",
+                description = "+${milestone.coinReward} 🪙, +${milestone.xpReward} XP | Titel: ${milestone.unlockedTitle}",
+                badgeColorHex = milestone.colorHex,
+                actionText = "ANSEHEN",
+                targetDestinationName = "MISSIONS",
+                durationMs = 4200L
+            )
+        )
+
+        if (_audioFeedbackEnabled.value) {
+            soundManager.playLevelUpFanfare()
+            spiritTtsManager.speakSpiritBoxAudio(
+                "Glückwunsch! Belohnung für ${milestone.title} erhalten! Plus ${milestone.coinReward} Geister Coins!",
+                emfLevel = 9.0f,
+                dangerLevel = 1,
+                soundManager = soundManager,
+                isSystemAnnouncement = true
+            )
+        }
+        triggerVibrationWaveform(longArrayOf(0, 100, 80, 200, 80, 350))
+    }
+
+    fun claimAllAvailableMilestones(detections: List<GhostDetectionEntity>, evpCount: Int) {
+        val unclaimedReady = GhostRewardCatalog.allMilestones.filter { milestone ->
+            !_claimedMilestoneIds.value.contains(milestone.id) &&
+            getMilestoneCurrentCount(milestone, detections, evpCount) >= milestone.targetCount
+        }
+        if (unclaimedReady.isEmpty()) return
+
+        var totalCoinsAwarded = 0
+        val newClaimedSet = _claimedMilestoneIds.value.toMutableSet()
+        unclaimedReady.forEach { milestone ->
+            newClaimedSet.add(milestone.id)
+            totalCoinsAwarded += milestone.coinReward
+        }
+
+        _claimedMilestoneIds.value = newClaimedSet
+        rewardSharedPrefs.edit().putStringSet("claimed_milestones", newClaimedSet).apply()
+
+        val newBalance = _ghostCoins.value + totalCoinsAwarded
+        val newTotal = _totalCoinsEarned.value + totalCoinsAwarded
+        _ghostCoins.value = newBalance
+        _totalCoinsEarned.value = newTotal
+        rewardSharedPrefs.edit()
+            .putInt("ghost_coins", newBalance)
+            .putInt("total_coins_earned", newTotal)
+            .apply()
+
+        val firstMilestone = unclaimedReady.first()
+        _celebrationMilestone.value = firstMilestone.copy(
+            title = "${unclaimedReady.size} BELOHNUNGEN BEANSPRUCHT!",
+            coinReward = totalCoinsAwarded,
+            description = "Alle bereiten Meilensteine wurden erfolgreich eingelöst!"
+        )
+        _recentCoinRewardToast.value = "🎁 +$totalCoinsAwarded 🪙 (${unclaimedReady.size} Belohnungen beansprucht)!"
+
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.MILESTONE_CLAIMED,
+                iconEmoji = "🏆",
+                title = "${unclaimedReady.size} ERFOLGE EINGELÖST!",
+                description = "+$totalCoinsAwarded 🪙 Geister-Coins auf dein Konto gutgeschrieben!",
+                badgeColorHex = 0xFFFFD700,
+                actionText = "SHOP",
+                targetDestinationName = "MISSIONS",
+                durationMs = 4500L
+            )
+        )
+
+        if (_audioFeedbackEnabled.value) {
+            soundManager.playLevelUpFanfare()
+            spiritTtsManager.speakSpiritBoxAudio(
+                "Alle bereiten Belohnungen eingelöst! Plus $totalCoinsAwarded Geister Coins erhalten!",
+                emfLevel = 9.0f,
+                dangerLevel = 1,
+                soundManager = soundManager,
+                isSystemAnnouncement = true
+            )
+        }
+        triggerVibrationWaveform(longArrayOf(0, 120, 80, 250, 80, 400))
+    }
+
+    fun buyShopUpgrade(upgrade: GhostShopUpgrade): Boolean {
+        val currentLvl = getUpgradeLevel(upgrade.id)
+        if (currentLvl >= upgrade.maxLevel) return false
+        val cost = upgrade.getCostForLevel(currentLvl)
+        if (_ghostCoins.value < cost) return false
+
+        val newBalance = _ghostCoins.value - cost
+        _ghostCoins.value = newBalance
+        rewardSharedPrefs.edit().putInt("ghost_coins", newBalance).apply()
+
+        val newLvl = currentLvl + 1
+        val newMap = _purchasedUpgradeLevels.value.toMutableMap()
+        newMap[upgrade.id] = newLvl
+        _purchasedUpgradeLevels.value = newMap
+        rewardSharedPrefs.edit().putInt("upgrade_lvl_${upgrade.id}", newLvl).apply()
+
+        _recentCoinRewardToast.value = "⚡ ${upgrade.title} auf Stufe $newLvl aufgerüstet!"
+
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.UPGRADE_PURCHASED,
+                iconEmoji = upgrade.iconEmoji,
+                title = "UPGRADE AKTIVIERT!",
+                description = "${upgrade.title} auf Stufe $newLvl freigeschaltet!",
+                badgeColorHex = upgrade.colorHex,
+                durationMs = 3800L
+            )
+        )
+
+        if (_audioFeedbackEnabled.value) {
+            soundManager.playCoinRewardSound()
+            spiritTtsManager.speakSpiritBoxAudio(
+                "${upgrade.title} auf Stufe $newLvl verbessert.",
+                emfLevel = 7.0f,
+                dangerLevel = 1,
+                soundManager = soundManager,
+                isSystemAnnouncement = true
+            )
+        }
+        triggerVibration(150)
+        return true
+    }
+
+    fun evaluateMilestones(detections: List<GhostDetectionEntity>, evpCount: Int) {
+        val claimed = _claimedMilestoneIds.value
+        val notified = _notifiedMilestoneIds.value.toMutableSet()
+        var newlyNotified = false
+
+        GhostRewardCatalog.allMilestones.forEach { milestone ->
+            if (!claimed.contains(milestone.id) && !notified.contains(milestone.id)) {
+                val currentCount = getMilestoneCurrentCount(milestone, detections, evpCount)
+                if (currentCount >= milestone.targetCount) {
+                    notified.add(milestone.id)
+                    newlyNotified = true
+
+                    showToastNotification(
+                        GhostToastNotification(
+                            type = ToastNotificationType.MILESTONE_UNLOCKED,
+                            iconEmoji = milestone.badgeIcon,
+                            title = "ERFOLG: ${milestone.title}",
+                            description = "${milestone.targetCount} erreicht! Belohnung (+${milestone.coinReward} 🪙) jetzt abholbereit!",
+                            badgeColorHex = milestone.colorHex,
+                            actionText = "ZU ERFOLGEN",
+                            targetDestinationName = "MISSIONS",
+                            durationMs = 4800L
+                        )
+                    )
+
+                    if (_audioFeedbackEnabled.value) {
+                        soundManager.playLevelUpFanfare()
+                    }
+                    triggerVibrationWaveform(longArrayOf(0, 100, 60, 220, 60, 350))
+                }
+            }
+        }
+
+        if (newlyNotified) {
+            _notifiedMilestoneIds.value = notified
+            rewardSharedPrefs.edit().putStringSet("notified_milestones", notified).apply()
+        }
+    }
+
+    fun dismissCelebration() {
+        _celebrationMilestone.value = null
+    }
+
+    fun dismissCoinToast() {
+        _recentCoinRewardToast.value = null
+    }
+
+    fun getMilestoneCurrentCount(milestone: GhostRewardMilestone, detections: List<GhostDetectionEntity>, evpCount: Int): Int {
+        return when (milestone.category) {
+            RewardCategory.GHOSTS -> {
+                val ghostCount = detections.count {
+                    it.type.contains("GEIST", ignoreCase = true) ||
+                    it.type.contains("BEFREIT", ignoreCase = true) ||
+                    it.type.contains("POLTERGEIST", ignoreCase = true) ||
+                    it.type.contains("SCHATTEN", ignoreCase = true) ||
+                    it.type.contains("PHANTOM", ignoreCase = true) ||
+                    (it.type.contains("GEFANGEN", ignoreCase = true) && !it.type.contains("DÄMON", ignoreCase = true) && !it.type.contains("VAMPIR", ignoreCase = true))
+                }
+                ghostCount.coerceAtLeast(_capturedCount.value)
+            }
+            RewardCategory.DEMONS -> {
+                detections.count {
+                    it.type.contains("DÄMON", ignoreCase = true) || it.name.contains("DÄMON", ignoreCase = true) || it.type.contains("DEMON", ignoreCase = true)
+                }
+            }
+            RewardCategory.VAMPIRES -> {
+                detections.count {
+                    it.type.contains("VAMPIR", ignoreCase = true) || it.name.contains("VAMPIR", ignoreCase = true)
+                }
+            }
+            RewardCategory.DIMENSIONS -> {
+                detections.count {
+                    it.type.contains("DIMENSION", ignoreCase = true) || it.name.contains("VERRIEGELT", ignoreCase = true) || it.type.contains("RISS", ignoreCase = true)
+                }
+            }
+            RewardCategory.EVP -> evpCount
+            RewardCategory.SPECIAL, RewardCategory.ALL -> detections.size
+        }
+    }
+
+    private fun checkDailyBonus() {
+        val vaultLvl = getUpgradeLevel("upgrade_bank_vault")
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        val lastDate = rewardSharedPrefs.getString("last_daily_bonus_date", "")
+        if (today != lastDate) {
+            val bonus = when (vaultLvl) {
+                0 -> 25
+                1 -> 50
+                2 -> 120
+                else -> 250
+            }
+            awardCoins(bonus, "Täglicher Ecto-Tresor Login-Bonus!", playSound = false)
+            rewardSharedPrefs.edit().putString("last_daily_bonus_date", today).apply()
+        }
+    }
 
     // Room DB Flow
     val allDetections: StateFlow<List<GhostDetectionEntity>>
@@ -293,10 +719,10 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // Magnet Shield & Attack Defense State (TV/Monitor EMI Neutralizer)
-    private val _isMagnetShieldActive = MutableStateFlow(true)
+    private val _isMagnetShieldActive = MutableStateFlow(false)
     val isMagnetShieldActive: StateFlow<Boolean> = _isMagnetShieldActive.asStateFlow()
 
-    private val _isEmfSuppressionActive = MutableStateFlow(true)
+    private val _isEmfSuppressionActive = MutableStateFlow(false)
     val isEmfSuppressionActive: StateFlow<Boolean> = _isEmfSuppressionActive.asStateFlow()
 
     val isTtsMuted: StateFlow<Boolean> = spiritTtsManager.isMuted
@@ -378,8 +804,26 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     val autoDimensionSealingEnabled: StateFlow<Boolean> = _autoDimensionSealingEnabled.asStateFlow()
 
     // Background 24/7 Scan State
-    private val _backgroundScan247Enabled = MutableStateFlow(true)
+    private val _backgroundScan247Enabled = MutableStateFlow(securitySharedPrefs.getBoolean("background_scan_enabled", false))
     val backgroundScan247Enabled: StateFlow<Boolean> = _backgroundScan247Enabled.asStateFlow()
+
+    fun toggleBackgroundScan247Enabled(context: android.content.Context) {
+        val newState = !_backgroundScan247Enabled.value
+        _backgroundScan247Enabled.value = newState
+        securitySharedPrefs.edit().putBoolean("background_scan_enabled", newState).apply()
+        
+        val serviceIntent = android.content.Intent(context, com.example.service.GhostBackgroundService::class.java)
+        if (newState) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
+            }
+        } else {
+            serviceIntent.action = com.example.service.GhostBackgroundService.ACTION_STOP_SERVICE
+            context.startService(serviceIntent)
+        }
+    }
 
     // Battery Saver Mode State (Akkusparmodus für Hintergrundbetrieb)
     private val _isBatterySaverEnabled = MutableStateFlow(securitySharedPrefs.getBoolean("battery_saver_enabled", true))
@@ -934,6 +1378,63 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             repository.prepopulateIfEmpty()
         }
 
+        
+        // --- OFFLINE / BACKGROUND PROCESS LOGIC ---
+        val lastLogin = rewardSharedPrefs.getLong("last_background_scan_time", System.currentTimeMillis())
+        val currentTime = System.currentTimeMillis()
+        val elapsedMinutes = (currentTime - lastLogin) / 60000L
+        
+        if (elapsedMinutes > 0 && rewardSharedPrefs.getBoolean("background_scan_enabled_persisted", true)) {
+            val catches = (elapsedMinutes / 5).toInt().coerceAtMost(100) // Catch 1 every 5 mins, max 100
+            if (catches > 0) {
+                val coins = catches * getCoinBonusPerEntity()
+                awardCoins(coins, "Offline Hintergrund-Scan ($catches gefunden)", playSound = false)
+                
+                viewModelScope.launch {
+                    repeat(catches) {
+                        repository.insertGhost(com.example.data.GhostDetectionEntity(
+                            name = "Unbekannte Entität",
+                            type = listOf("Schattenwesen", "Nebelgeist", "Poltergeist").random(),
+                            emfLevel = 3.0f + kotlin.random.Random.nextFloat() * 2f,
+                            frequencyKhz = 42.5f,
+                            dangerLevel = kotlin.random.Random.nextInt(1, 4),
+                            timestamp = System.currentTimeMillis() - kotlin.random.Random.nextLong(0, elapsedMinutes * 60000L),
+                            locationName = "Hintergrund-Scan",
+                            notes = "Von der 24/7 Hintergrund-Erfassung gesammelt."
+                        ))
+                    }
+                }
+            }
+        }
+        
+        viewModelScope.launch {
+            while (true) {
+                rewardSharedPrefs.edit().putLong("last_background_scan_time", System.currentTimeMillis()).apply()
+                rewardSharedPrefs.edit().putBoolean("background_scan_enabled_persisted", _backgroundScan247Enabled.value).apply()
+                delay(10000L) // Save state every 10 seconds
+            }
+        }
+        // ------------------------------------------
+
+        // Initial location fetch
+        fetchRealLocation()
+
+        viewModelScope.launch {
+            while (true) {
+                delay(10000L) // Update every 10 seconds
+                fetchRealLocation()
+            }
+        }
+
+        // Live automatic evaluation of milestones for ghosts, demons, vampires, portals & EVP
+        viewModelScope.launch {
+            combine(allDetections, _spiritPhraseLog) { detections, phraseLog ->
+                Pair(detections, phraseLog.size)
+            }.collect { (detections, evpCount) ->
+                evaluateMilestones(detections, evpCount)
+            }
+        }
+
         val screenIntentFilter = android.content.IntentFilter().apply {
             addAction(android.content.Intent.ACTION_SCREEN_OFF)
             addAction(android.content.Intent.ACTION_SCREEN_ON)
@@ -948,6 +1449,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         startScanningLoop()
         startChartHistoryLoop()
         startAutoFilterRotationLoop()
+        checkDailyBonus()
     }
 
     private fun startChartHistoryLoop() {
@@ -1039,9 +1541,21 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                     val motionBoost = (motion * 0.7f) + (gyro * 0.5f)
                     val shadowLuxBoost = if (lux < 50f) 1.2f else 0.0f
                     val proxBoost = if (prox < 3f) 1.5f else 0.0f
-                    val baseEmf = (rawSensorEmf + motionBoost + shadowLuxBoost + proxBoost).coerceIn(1.0f, 9.5f)
-                    val isSpike = Random.nextFloat() > (if (motion > 2.0f || gyro > 1.5f) 0.3f else 0.65f)
-                    var newEmf = if (isSpike) (baseEmf + Random.nextFloat() * 4.5f).coerceAtMost(9.9f) else baseEmf
+                    
+                    // Dynamic ambient baseline that slowly drifts over time, adding to raw sensor data
+                    val ambientDrift = (Math.sin(System.currentTimeMillis() / 4000.0) * 1.5).toFloat().coerceAtLeast(0f)
+                    val baseEmf = (rawSensorEmf + motionBoost + shadowLuxBoost + proxBoost + ambientDrift).coerceIn(1.0f, 9.5f)
+                    
+                    // Frequent strong spikes for a more dynamic and scary EMF behavior
+                    val isSpike = Random.nextFloat() > (if (motion > 2.0f || gyro > 1.5f) 0.1f else 0.45f)
+                    var newEmf = if (isSpike) {
+                        // When it spikes, give it a heavy multiplier + random boost to frequently hit high values
+                        ((baseEmf * 1.5f) + Random.nextFloat() * 6.5f).coerceAtMost(9.9f)
+                    } else {
+                        // Standard fluctuation
+                        (baseEmf + Random.nextFloat() * 1.5f).coerceAtMost(9.9f)
+                    }
+
                     if (_isEmfSuppressionActive.value || _isMagnetShieldActive.value) {
                         newEmf = (newEmf * 0.35f).coerceIn(0.8f, 2.2f)
                     }
@@ -1397,7 +1911,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 emfLevel = _emfLevel.value,
                 frequencyKhz = _frequencyKhz.value,
                 dangerLevel = _dangerLevel.value,
-                locationName = location,
+                locationName = currentLocationName ?: location,
                 timestamp = System.currentTimeMillis(),
                 notes = notes,
                 spectralColorHex = when (_currentFilterMode.value) {
@@ -1409,7 +1923,9 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                     FilterMode.INFRA_BLUE -> "#00A8FF"
                     FilterMode.INFRARED -> "#FF2A2A"
                 },
-                lastWords = _spiritResponse.value
+                lastWords = _spiritResponse.value,
+                latitude = currentLatitude,
+                longitude = currentLongitude
             )
             repository.insertGhost(entity)
         }
@@ -1458,6 +1974,10 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             }
             _liberatedBannerMessage.value = msg
 
+            // Award Ghost Coins for liberating spirits
+            val coinsToAward = if (totalEnt > 1) 25 * totalEnt else 30
+            val c = getCoinBonusPerEntity(); awardCoins(c, "Seelen-Harmonisierung (+$c 🪙)")
+
             // Store record in DB as Liberated Entity so history proves freedom
             val types = listOf("Befreiter Poltergeist", "Harmonisiertes Phantom", "Erlöstes Schattenwesen", "Befreiter Geist")
             val ghostType = types[Random.nextInt(types.size)]
@@ -1467,11 +1987,13 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 emfLevel = _emfLevel.value,
                 frequencyKhz = _frequencyKhz.value,
                 dangerLevel = 1,
-                locationName = "Spektrale Befreiungs-Zone",
+                locationName = currentLocationName ?: "Spektrale Befreiungs-Zone",
                 timestamp = System.currentTimeMillis(),
                 notes = "Erfolgreich über das Radar ins Licht befreit.",
                 spectralColorHex = "#00FFCC",
-                lastWords = "Danke für die Befreiung."
+                lastWords = "Danke für die Befreiung.",
+                latitude = currentLatitude,
+                longitude = currentLongitude
             )
             repository.insertGhost(freedEntity)
 
@@ -1505,17 +2027,21 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             val label = blip.label ?: if (blip.dangerLevel >= 4) "Roter Poltergeist" else "Phantom Anomaly"
             _liberatedBannerMessage.value = "✨ $label BEFREIT: Der Radar-Punkt wurde erlöst!"
 
+            val c = getCoinBonusPerEntity(); awardCoins(c, "Geist ins Licht erlöst (+$c 🪙)")
+
             val freedEntity = GhostDetectionEntity(
                 name = "$label [BEFREIT]",
                 type = "BEFREIT & HARMONISIERT",
                 emfLevel = _emfLevel.value,
                 frequencyKhz = _frequencyKhz.value,
                 dangerLevel = 1,
-                locationName = "Radar Einzel-Befreiung",
+                locationName = currentLocationName ?: "Radar Einzel-Befreiung",
                 timestamp = System.currentTimeMillis(),
                 notes = "Einzelseelen-Befreiung direkt über Radar-Punkt.",
                 spectralColorHex = "#00FFCC",
-                lastWords = "Danke für die Erlösung!"
+                lastWords = "Danke für die Erlösung!",
+                latitude = currentLatitude,
+                longitude = currentLongitude
             )
             repository.insertGhost(freedEntity)
             
@@ -1562,17 +2088,21 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             val msg = "🌀 DIMENSION-RISS VERRIEGELT: $riftLabel erfolgreich geschlossen & Raum-Zeit stabilisiert!"
             _liberatedBannerMessage.value = msg
 
+            awardCoins(30, "Dimensions-Portal versiegelt (+30 🪙)")
+
             val closedEntity = GhostDetectionEntity(
                 name = "$riftLabel [VERRIEGELT]",
                 type = "DIMENSIONSRISS (GESCHLOSSEN)",
                 emfLevel = _emfLevel.value,
                 frequencyKhz = _frequencyKhz.value,
                 dangerLevel = 1,
-                locationName = "Interdimensionales Portal-Siegel",
+                locationName = currentLocationName ?: "Interdimensionales Portal-Siegel",
                 timestamp = System.currentTimeMillis(),
                 notes = "Portal mit dem Quanten-Dimensionen-Versiegeler dauerhaft verschlossen.",
                 spectralColorHex = "#00FFFF",
-                lastWords = "Das Portal schließt sich..."
+                lastWords = "Das Portal schließt sich...",
+                latitude = currentLatitude,
+                longitude = currentLongitude
             )
             repository.insertGhost(closedEntity)
 
@@ -1663,11 +2193,13 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 emfLevel = 9.9f,
                 frequencyKhz = 108.0f,
                 dangerLevel = 1,
-                locationName = "Dimensions-Schmiede Sanctum",
+                locationName = currentLocationName ?: "Dimensions-Schmiede Sanctum",
                 timestamp = System.currentTimeMillis(),
                 notes = "Siegel-Wirkung aktiviert (${sigil.purpose}). Verbleibende Dauer: ${sigil.durationSeconds}s.",
                 spectralColorHex = "#00FFCC",
-                lastWords = "Das Siegel brennt hell und schützt diesen Raum."
+                lastWords = "Das Siegel brennt hell und schützt diesen Raum.",
+                latitude = currentLatitude,
+                longitude = currentLongitude
             )
             repository.insertGhost(ritualEntity)
 
@@ -1813,21 +2345,32 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             val msg = "⚡ ${targetBlip.label} GEFANGEN: In die Spektral-Falle & Dämonen-Siegel sicher verbannt!"
             _liberatedBannerMessage.value = msg
 
+            // Award Geister-Coins based on Entity Category
+            when (targetBlip.category) {
+                com.example.ui.components.EntityCategory.DEMON -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Höllendämon gefangen! (+$c 🪙)") }
+                com.example.ui.components.EntityCategory.VAMPIRE -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Astral-Vampir gebannt! (+$c 🪙)") }
+                else -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Geist gefangen! (+$c 🪙)") }
+            }
+
             val capturedEntity = GhostDetectionEntity(
                 name = "${targetBlip.label} [GEFANGEN]",
                 type = typeText,
                 emfLevel = _emfLevel.value,
                 frequencyKhz = _frequencyKhz.value,
                 dangerLevel = targetBlip.dangerLevel,
-                locationName = "Spektral-Falle Containment-Kammer",
+                locationName = currentLocationName ?: "Spektral-Falle Containment-Kammer",
                 timestamp = System.currentTimeMillis(),
                 notes = meaningText,
                 spectralColorHex = "#FF0055",
-                lastWords = lastWordsText
+                lastWords = lastWordsText,
+                latitude = currentLatitude,
+                longitude = currentLongitude
             )
             repository.insertGhost(capturedEntity)
 
-            delay(1800)
+            val trapSpeedLvl = getUpgradeLevel("upgrade_trap_speed")
+            val trapDelay = (1800L - (trapSpeedLvl * 320L)).coerceAtLeast(200L)
+            delay(trapDelay)
             _isCapturingEntity.value = false
         }
     }
@@ -1958,6 +2501,9 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 dangerLevel = _dangerLevel.value
             )
             _spiritPhraseLog.value = listOf(logEntry) + _spiritPhraseLog.value
+
+            // Award coins for EVP dialogue
+            awardCoins(15, "EVP-Botschaft empfangen (+15 🪙)", playSound = false)
 
             // Vocalize through Text-to-Speech with Spirit Box audio effects
             spiritTtsManager.speakSpiritBoxAudio(

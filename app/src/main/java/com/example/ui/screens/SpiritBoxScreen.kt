@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -353,7 +354,7 @@ fun SpiritBoxScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = if (isTtsMuted || ttsVolume <= 0.01f) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                imageVector = if (isTtsMuted || ttsVolume <= 0.01f) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = null,
                                 tint = if (isTtsMuted || ttsVolume <= 0.01f) AlertInfraRed else InfraGreenPrimary,
                                 modifier = Modifier.size(22.dp)
@@ -384,7 +385,7 @@ fun SpiritBoxScreen(
                             modifier = Modifier.testTag("toggle_tts_mute_button")
                         ) {
                             Icon(
-                                imageVector = if (isTtsMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                imageVector = if (isTtsMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = "Mute Toggle",
                                 tint = if (isTtsMuted) AlertInfraRed else InfraGreenPrimary
                             )
@@ -841,29 +842,40 @@ fun SpiritBoxScreen(
             }
 
             // Sensor-Based TTS Phrase Generator Control Card
-            // EVP Recorder Widget
+            // Real-Time Spirit Communication & EVP Recorder Widget
             Card(
                 colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
                 border = CardDefaults.outlinedCardBorder(enabled = true),
                 modifier = Modifier.fillMaxWidth().testTag("evp_recorder_card")
             ) {
                 Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = InfraGreenPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("EVP-REKORDER", style = MaterialTheme.typography.titleSmall.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.RecordVoiceOver, contentDescription = null, tint = InfraGreenPrimary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("EVP-REKORDER & GEISTER-KOMMUNIKATOR", style = MaterialTheme.typography.titleSmall.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                        }
                     }
-                    Text("Nimmt Umgebungsgeräusche auf und filtert verborgene Stimmen heraus (EVP).", style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontSize = 11.sp))
+                    Text("Nimmt deine gesprochenen Worte (über das Mikrofon) auf und filtert anschließend verborgene Stimmen und Reaktionen aus dem Äther heraus.", style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontSize = 11.sp))
                     if (showEvpResult) {
                         Text("ERFASST: $evpResultPhrase", style = MaterialTheme.typography.bodyMedium.copy(color = com.example.ui.theme.AlertInfraRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
                     }
                     Button(
                         onClick = {
+                            if (!hasMicPermission) {
+                                launcher.launch(Manifest.permission.RECORD_AUDIO)
+                                return@Button
+                            }
                             if (isRecordingEvp) {
                                 isRecordingEvp = false
                                 showEvpResult = true
                                 viewModel.soundManager.playGhostFreedSound()
-                                viewModel.askSpirit("Hast du eine Nachricht hinterlassen?")
+                                // Starte die AI Anfrage basierend auf der Aufnahme
+                                viewModel.askSpirit("Ich habe soeben über das EVP-Gerät eine Sprachaufnahme gemacht. Reagiere auf die Umgebungsgeräusche und auf alles, was ich möglicherweise gesagt habe, und hinterlasse eine unheimliche EVP-Nachricht.")
                             } else {
                                 isRecordingEvp = true
                                 showEvpResult = false
@@ -873,7 +885,16 @@ fun SpiritBoxScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(6.dp)
                     ) {
-                        Text(if (isRecordingEvp) "AUFNAHME STOPPEN" else "EVP-AUFNAHME STARTEN", color = if (isRecordingEvp) Color.White else InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                            Icon(
+                                imageVector = if (isRecordingEvp) Icons.Default.MicOff else Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = if (isRecordingEvp) Color.White else InfraGreenPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isRecordingEvp) "AUFNAHME BEENDEN & ANALYSIEREN" else "SPRACHAUFNAHME STARTEN (MIKROFON)", color = if (isRecordingEvp) Color.White else InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
