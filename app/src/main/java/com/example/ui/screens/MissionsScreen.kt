@@ -62,6 +62,7 @@ import com.example.data.GhostRewardMilestone
 import com.example.data.GhostShopUpgrade
 import com.example.data.RewardCategory
 import com.example.ui.components.CelebrationRewardDialog
+import com.example.ui.components.CollapsibleHudWindow
 import com.example.ui.viewmodel.GhostViewModel
 
 enum class MissionsScreenTab(val title: String, val icon: String) {
@@ -136,14 +137,15 @@ fun MissionsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // 1. TOP HERO HEADER: GHOST COINS & RANK WALLET
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0C130E)),
-                border = BorderStroke(1.5.dp, Color(0xFFFFD700).copy(alpha = 0.8f)),
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.fillMaxWidth()
+            CollapsibleHudWindow(
+                title = "GEISTER-KONTO & RANG",
+                icon = Icons.Default.MilitaryTech,
+                badgeText = "$ghostCoins COINS",
+                initialExpanded = true,
+                isScrollable = false,
+                testTag = "missions_hero_wallet_window"
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(

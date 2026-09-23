@@ -29,14 +29,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
+import com.example.ui.components.CollapsibleHudWindow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -190,90 +193,111 @@ fun HistoryScreen(
 
             // Dashboard Widget: Frequency Chart
             if (filteredGhosts.isNotEmpty()) {
-                com.example.ui.components.GhostFrequencyChart(
-                    detections = filteredGhosts,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                CollapsibleHudWindow(
+                    title = "SPEKTRAL-STATISTIK",
+                    icon = Icons.Default.BarChart,
+                    badgeText = "${filteredGhosts.size} FUNDE",
+                    initialExpanded = false,
+                    isScrollable = false,
+                    testTag = "history_frequency_chart_window"
+                ) {
+                    com.example.ui.components.GhostFrequencyChart(
+                        detections = filteredGhosts,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                placeholder = { Text(UiStrings.getSearchPlaceholder(appLanguage), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("history_search_input"),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                    focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                ),
-                singleLine = true
-            )
-
-            // Category Filter Chips & Favorites Toggle
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Search & Filter Window
+            CollapsibleHudWindow(
+                title = "FILTER & SUCHE",
+                icon = Icons.Default.FilterList,
+                badgeText = selectedTypeFilter.uppercase(),
+                initialExpanded = true,
+                isScrollable = false,
+                testTag = "history_filter_window"
             ) {
-                LazyRow(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(typeFilters) { type ->
-                        val isSelected = type == selectedTypeFilter
-                        Box(
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // Search Bar
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { viewModel.setSearchQuery(it) },
+                        placeholder = { Text(UiStrings.getSearchPlaceholder(appLanguage), color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("history_search_input"),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        singleLine = true
+                    )
+
+                    // Category Filter Chips & Favorites Toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        LazyRow(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            items(typeFilters) { type ->
+                                val isSelected = type == selectedTypeFilter
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                        .clickable { viewModel.setSelectedTypeFilter(type) }
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                ) {
+                                    Text(
+                                        text = type.uppercase(),
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        // Favorites Filter Button
+                        IconButton(
+                            onClick = { viewModel.setFavoritesOnlyFilter(!favoritesOnly) },
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                                .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                                .clickable { viewModel.setSelectedTypeFilter(type) }
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .background(if (favoritesOnly) AlertInfraRed.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface)
+                                .border(1.dp, if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
                         ) {
-                            Text(
-                                text = type.uppercase(),
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                )
+                            Icon(
+                                imageVector = if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Favoriten Filter",
+                                tint = if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        // Favorite all captured Button
+                        IconButton(
+                            onClick = { viewModel.favoriteAllCapturedGhosts() },
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Favorite,
+                                contentDescription = "Alle Gefangenen herzen",
+                                tint = AlertInfraRed
                             )
                         }
                     }
-                }
-
-                // Favorites Filter Button
-                IconButton(
-                    onClick = { viewModel.setFavoritesOnlyFilter(!favoritesOnly) },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (favoritesOnly) AlertInfraRed.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface)
-                        .border(1.dp, if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = "Favoriten Filter",
-                        tint = if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Favorite all captured Button
-                IconButton(
-                    onClick = { viewModel.favoriteAllCapturedGhosts() },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Alle Gefangenen herzen",
-                        tint = AlertInfraRed
-                    )
                 }
             }
 

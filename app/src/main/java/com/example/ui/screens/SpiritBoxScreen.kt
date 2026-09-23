@@ -23,6 +23,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material3.OutlinedButton
+import com.example.ui.components.CollapsibleHudWindow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
@@ -48,6 +60,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,9 +77,6 @@ import com.example.ui.components.AudioWaveformCanvas
 import com.example.ui.components.EmfMeter
 import com.example.ui.components.GhostCommunicatorCard
 import com.example.ui.components.SpiritLogOverlayDialog
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.material.icons.filled.VolumeOff
 import com.example.ui.theme.AlertInfraRed
 import com.example.ui.theme.InfraGreenBorder
 import com.example.ui.theme.InfraGreenPrimary
@@ -113,9 +123,9 @@ fun SpiritBoxScreen(
     val vibrationEnabled by viewModel.vibrationEnabled.collectAsStateWithLifecycle()
     val sensorEmf by viewModel.sensorManager.sensorEmfStrength.collectAsStateWithLifecycle()
     val sensorMotion by viewModel.sensorManager.motionIntensity.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     var isRecordingEvp by remember { mutableStateOf(false) }
     var showEvpResult by remember { mutableStateOf(false) }
-    val evpResultPhrase = "Geister-Stimme: Lasst mich in Frieden..."
 
     var inputQuestion by remember { mutableStateOf("") }
     
@@ -153,6 +163,7 @@ fun SpiritBoxScreen(
     }
 
     val questionPresets = UiStrings.getPresetQuestions(appLanguage)
+    var globalWindowState by remember { mutableStateOf<Boolean?>(null) }
 
     Box(
         modifier = modifier
@@ -209,6 +220,36 @@ fun SpiritBoxScreen(
                             fontWeight = FontWeight.Bold
                         )
                     )
+                }
+            }
+
+            // Global Master Window Controls (Alle Minimieren / Alle Maximieren)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { globalWindowState = false },
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    border = BorderStroke(1.dp, InfraGreenBorder),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = InfraGreenTextPrimaryVariant),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.KeyboardArrowUp, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("ALLE MINIMIEREN", style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp))
+                }
+
+                OutlinedButton(
+                    onClick = { globalWindowState = true },
+                    modifier = Modifier.weight(1f).height(36.dp),
+                    border = BorderStroke(1.dp, InfraGreenPrimary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = InfraGreenPrimary),
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("ALLE MAXIMIEREN", style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontSize = 10.sp))
                 }
             }
 
@@ -290,60 +331,42 @@ fun SpiritBoxScreen(
                 }
             }
 
-            // Audio Waveform Display Canvas
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
+            // Audio Waveform Display Window
+            CollapsibleHudWindow(
+                title = "SPEKTRAL-AUDIO WELLENFORM (TTS)",
+                icon = Icons.Default.GraphicEq,
+                badgeText = if (isSpeaking) "TTS AKTIV" else "EMPFANG",
+                initialExpanded = true,
+                forceExpandedState = globalWindowState,
+                isScrollable = false,
+                testTag = "audio_waveform_window"
             ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "SPEKTRAL-AUDIO WELLENFORM (TTS)",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = InfraGreenTextPrimaryVariant,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        )
-
-                        Text(
-                            text = "STATUS: ${if (isSpeaking) "TEXT-TO-SPEECH AKTIV" else "EMPFANG"}",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = InfraGreenPrimary,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        )
-                    }
-
-                    AudioWaveformCanvas(
-                        isActive = true,
-                        isScanning = isMicListening || autoSpiritBoxEnabled || isGenerating || isSpeaking,
-                        isGenerating = isGenerating,
-                        isSpeaking = isSpeaking,
-                        liveMicAmplitude = micAmplitude,
-                        frequencyKhz = currentFreq,
-                        emfLevel = currentEmf,
-                        waveColor = InfraGreenPrimary,
-                        amplitudeMultiplier = if (isSpeaking || isGenerating) 1.6f else 0.8f
-                    )
-                }
+                AudioWaveformCanvas(
+                    isActive = true,
+                    isScanning = isMicListening || autoSpiritBoxEnabled || isGenerating || isSpeaking,
+                    isGenerating = isGenerating,
+                    isSpeaking = isSpeaking,
+                    liveMicAmplitude = micAmplitude,
+                    frequencyKhz = currentFreq,
+                    emfLevel = currentEmf,
+                    waveColor = InfraGreenPrimary,
+                    amplitudeMultiplier = if (isSpeaking || isGenerating) 1.6f else 0.8f
+                )
             }
 
-            
-            // Dedicated Spirit Box Voice & Volume Control Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth().testTag("audio_mute_system_voice_card")
+            // Dedicated Spirit Box Voice & Volume Control Window
+            CollapsibleHudWindow(
+                title = "STIMMEN- & LAUTSTÄRKE-STEUERUNG",
+                icon = Icons.AutoMirrored.Filled.VolumeUp,
+                badgeText = if (isTtsMuted || ttsVolume <= 0.01f) "STUMM" else "${(ttsVolume * 100).toInt()}%",
+                initialExpanded = true,
+                forceExpandedState = globalWindowState,
+                isScrollable = true,
+                defaultMaxHeight = 360.dp,
+                expandedMaxHeight = 580.dp,
+                testTag = "audio_mute_system_voice_card"
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     // Header Row with Mute Switch
@@ -616,14 +639,19 @@ fun SpiritBoxScreen(
                 }
             }
 
-            // Real-Time Radio Frequency Sweep Control Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth().testTag("realtime_sweep_card")
+            // Real-Time Radio Frequency Sweep Control Window
+            CollapsibleHudWindow(
+                title = "ECHTZEIT RADIO-SWEEP (FM/AM)",
+                icon = Icons.Default.Tune,
+                badgeText = if (isRealtimeSweepActive) "SWEEP AKTIV" else "PAUSIERT",
+                initialExpanded = true,
+                forceExpandedState = globalWindowState,
+                isScrollable = true,
+                defaultMaxHeight = 360.dp,
+                expandedMaxHeight = 580.dp,
+                testTag = "realtime_sweep_card"
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
@@ -641,7 +669,7 @@ fun SpiritBoxScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "ECHTZEIT RADIO-SWEEP (FM/AM)",
+                                    text = "RADIO-EMPFANG",
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         color = InfraGreenPrimary,
                                         fontFamily = FontFamily.Monospace,
@@ -720,14 +748,19 @@ fun SpiritBoxScreen(
                 }
             }
 
-            // Live Microphone Input & Duden Sprach-AI Status Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth().testTag("live_mic_ai_card")
+            // Live Microphone Input & Duden Sprach-AI Status Window
+            CollapsibleHudWindow(
+                title = "EVP-MIKROFON & SPRACH-KI",
+                icon = Icons.Default.Mic,
+                badgeText = if (isMicListening) "MIKRO AN" else "BEREIT",
+                initialExpanded = true,
+                forceExpandedState = globalWindowState,
+                isScrollable = true,
+                defaultMaxHeight = 340.dp,
+                expandedMaxHeight = 560.dp,
+                testTag = "live_mic_ai_card"
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
@@ -843,12 +876,18 @@ fun SpiritBoxScreen(
 
             // Sensor-Based TTS Phrase Generator Control Card
             // Real-Time Spirit Communication & EVP Recorder Widget
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth().testTag("evp_recorder_card")
+            CollapsibleHudWindow(
+                title = "EVP-REKORDER & GEISTER-KOMMUNIKATOR",
+                icon = Icons.Default.RecordVoiceOver,
+                badgeText = if (isRecordingEvp) "AUFNAHME..." else "BEREIT",
+                initialExpanded = true,
+                forceExpandedState = globalWindowState,
+                isScrollable = true,
+                defaultMaxHeight = 340.dp,
+                expandedMaxHeight = 560.dp,
+                testTag = "evp_recorder_card"
             ) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -861,8 +900,79 @@ fun SpiritBoxScreen(
                         }
                     }
                     Text("Nimmt deine gesprochenen Worte (über das Mikrofon) auf und filtert anschließend verborgene Stimmen und Reaktionen aus dem Äther heraus.", style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontSize = 11.sp))
-                    if (showEvpResult) {
-                        Text("ERFASST: $evpResultPhrase", style = MaterialTheme.typography.bodyMedium.copy(color = com.example.ui.theme.AlertInfraRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                    
+                    if (isRecordingEvp) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("🎙️ AUFNAHME AKTIV (SPRICH JETZT...)", color = com.example.ui.theme.AlertInfraRed, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                                Text("${(micAmplitude * 100).toInt()}% PEGEL", color = InfraGreenPrimary, style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace))
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(InfraGreenSurfaceVariant)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(micAmplitude.coerceIn(0.04f, 1f))
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(if (micAmplitude > 0.4f) com.example.ui.theme.AlertInfraRed else InfraGreenPrimary)
+                                )
+                            }
+                        }
+                    }
+
+                    if (isGenerating) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = InfraGreenPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Text("Entschlüssele paranormale EVP-Frequenz...", color = InfraGreenPrimary, style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace))
+                        }
+                    } else if (showEvpResult && spiritResponse.isNotBlank()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .border(1.dp, InfraGreenPrimary.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .padding(10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("ERFASSTE EVP-BOTSCHAFT:", style = MaterialTheme.typography.labelSmall.copy(color = com.example.ui.theme.AlertInfraRed, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text("\"$spiritResponse\"", style = MaterialTheme.typography.bodyMedium.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold))
+                            }
+                            IconButton(
+                                onClick = {
+                                    viewModel.spiritTtsManager.speakSpiritBoxAudio(
+                                        text = spiritResponse,
+                                        emfLevel = currentEmf,
+                                        dangerLevel = currentDanger,
+                                        soundManager = viewModel.soundManager
+                                    )
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = "Nochmal anhören",
+                                    tint = InfraGreenPrimary
+                                )
+                            }
+                        }
                     }
                     Button(
                         onClick = {
@@ -873,12 +983,14 @@ fun SpiritBoxScreen(
                             if (isRecordingEvp) {
                                 isRecordingEvp = false
                                 showEvpResult = true
+                                viewModel.microphoneAnalyzer.stopListening()
                                 viewModel.soundManager.playGhostFreedSound()
                                 // Starte die AI Anfrage basierend auf der Aufnahme
                                 viewModel.askSpirit("Ich habe soeben über das EVP-Gerät eine Sprachaufnahme gemacht. Reagiere auf die Umgebungsgeräusche und auf alles, was ich möglicherweise gesagt habe, und hinterlasse eine unheimliche EVP-Nachricht.")
                             } else {
                                 isRecordingEvp = true
                                 showEvpResult = false
+                                viewModel.microphoneAnalyzer.startListening(scope)
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = if (isRecordingEvp) com.example.ui.theme.AlertInfraRed else InfraGreenSurfaceVariant),
@@ -898,13 +1010,19 @@ fun SpiritBoxScreen(
                     }
                 }
             }
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
+            // Sensor-Based TTS Phrase Generator Control Window
+            CollapsibleHudWindow(
+                title = UiStrings.getSensorTtsCardTitle(appLanguage),
+                icon = Icons.Default.Sensors,
+                badgeText = "${String.format(java.util.Locale.US, "%.1f", currentEmf)} mG",
+                initialExpanded = false,
+                forceExpandedState = globalWindowState,
+                isScrollable = true,
+                defaultMaxHeight = 280.dp,
+                expandedMaxHeight = 460.dp,
+                testTag = "sensor_tts_window"
             ) {
                 Column(
-                    modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
@@ -975,14 +1093,19 @@ fun SpiritBoxScreen(
                 }
             }
 
-            // Spirit Transmission Dialogue Box
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurfaceVariant),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
+            // Spirit Transmission Dialogue Window
+            CollapsibleHudWindow(
+                title = "GEIST BOTSCHAFT (ECHTZEIT)",
+                icon = Icons.Default.RecordVoiceOver,
+                badgeText = if (isSpeaking) "SPRICHT" else if (isGenerating) "GENERIEREN..." else "EMPFANG",
+                initialExpanded = true,
+                forceExpandedState = globalWindowState,
+                isScrollable = true,
+                defaultMaxHeight = 320.dp,
+                expandedMaxHeight = 520.dp,
+                testTag = "spirit_transmission_window"
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
@@ -1066,27 +1189,22 @@ fun SpiritBoxScreen(
                 }
             }
 
-            // Auto Spirit Box & Random 10s Mode Control Card
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
+            // Auto Spirit Box & Random 10s Mode Control Window
+            CollapsibleHudWindow(
+                title = "AUTO-FRAGEN (10S INTERVALL)",
+                icon = Icons.Default.Tune,
+                badgeText = if (autoSpiritBoxEnabled) "AKTIV" else "AUS",
+                initialExpanded = false,
+                forceExpandedState = globalWindowState,
+                isScrollable = false,
+                testTag = "auto_spirit_box_window"
             ) {
                 Row(
-                    modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "AUTO-FRAGEN (10 SEK. INTERVALL):",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = InfraGreenPrimary,
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = if (autoSpiritBoxEnabled) "Aktiv: Zufällige Fragen & Sätze alle 10s" else "Inaktiv: Manuell fragen",
                             style = MaterialTheme.typography.bodySmall.copy(
@@ -1170,162 +1288,162 @@ fun SpiritBoxScreen(
                 )
             }
 
-            // Preset Question Chips
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "SCHNELL-FRAGEN (PRESETS):",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        color = InfraGreenTextPrimaryVariant,
-                        fontFamily = FontFamily.Monospace
-                    )
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    questionPresets.take(3).forEach { q ->
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(InfraGreenSurface)
-                                .border(1.dp, InfraGreenBorder, RoundedCornerShape(8.dp))
-                                .clickable {
-                                    inputQuestion = q
-                                    viewModel.askSpirit(q)
-                                }
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = q,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = InfraGreenTextPrimary,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    questionPresets.drop(3).take(3).forEach { q ->
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(InfraGreenSurface)
-                                .border(1.dp, InfraGreenBorder, RoundedCornerShape(8.dp))
-                                .clickable {
-                                    inputQuestion = q
-                                    viewModel.askSpirit(q)
-                                }
-                                .padding(vertical = 10.dp, horizontal = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = q,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = InfraGreenTextPrimary,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Custom Question Input Field
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Question Input & Presets Window
+            CollapsibleHudWindow(
+                title = "EVP FRAGEN-EINGABE & PRESETS",
+                icon = Icons.Default.QuestionAnswer,
+                initialExpanded = true,
+                forceExpandedState = globalWindowState,
+                isScrollable = true,
+                defaultMaxHeight = 360.dp,
+                expandedMaxHeight = 580.dp,
+                testTag = "question_input_window"
             ) {
-                OutlinedTextField(
-                    value = inputQuestion,
-                    onValueChange = { inputQuestion = it },
-                    placeholder = { Text(UiStrings.getQuestionPlaceholder(appLanguage), color = InfraGreenTextPrimaryVariant) },
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("spirit_question_input"),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = InfraGreenPrimary,
-                        unfocusedBorderColor = InfraGreenBorder,
-                        focusedTextColor = InfraGreenTextPrimary,
-                        unfocusedTextColor = InfraGreenTextPrimary
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "SCHNELL-FRAGEN (PRESETS):",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = InfraGreenTextPrimaryVariant,
+                            fontFamily = FontFamily.Monospace
+                        )
                     )
-                )
 
-                IconButton(
-                    onClick = {
-                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_LANGUAGE, "de-DE") // Defaulting to German
-                        }
-                        try {
-                            speechRecognizerLauncher.launch(intent)
-                        } catch (e: Exception) {
-                            // Ignoriert, falls keine Speech-App installiert ist
-                        }
-                    },
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(InfraGreenSurfaceVariant, RoundedCornerShape(12.dp))
-                        .border(1.dp, InfraGreenBorder, RoundedCornerShape(12.dp))
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = "Spracheingabe",
-                        tint = InfraGreenPrimary
-                    )
-                }
-
-                Button(
-                    onClick = {
-                        viewModel.askSpirit(inputQuestion)
-                    },
-                    modifier = Modifier.height(56.dp).testTag("send_question_button"),
-                    colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = UiStrings.getSendBtn(appLanguage),
-                        tint = Color.Black
-                    )
-                }
-            }
-
-            // TTS Voice Pitch Adjuster
-            Card(
-                colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
-                border = CardDefaults.outlinedCardBorder(enabled = true),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = UiStrings.getVoicePitchLabel(appLanguage),
-                            style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace)
-                        )
-                        Text(
-                            text = String.format("%.2fx", currentPitch),
-                            style = MaterialTheme.typography.labelSmall.copy(color = InfraGreenPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                        )
+                        questionPresets.take(3).forEach { q ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(InfraGreenSurface)
+                                    .border(1.dp, InfraGreenBorder, RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        inputQuestion = q
+                                        viewModel.askSpirit(q)
+                                    }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = q,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = InfraGreenTextPrimary,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
+                        }
                     }
 
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        questionPresets.drop(3).take(3).forEach { q ->
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(InfraGreenSurface)
+                                    .border(1.dp, InfraGreenBorder, RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        inputQuestion = q
+                                        viewModel.askSpirit(q)
+                                    }
+                                    .padding(vertical = 10.dp, horizontal = 4.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = q,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = InfraGreenTextPrimary,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    // Custom Question Input Field
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = inputQuestion,
+                            onValueChange = { inputQuestion = it },
+                            placeholder = { Text(UiStrings.getQuestionPlaceholder(appLanguage), color = InfraGreenTextPrimaryVariant) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("spirit_question_input"),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = InfraGreenPrimary,
+                                unfocusedBorderColor = InfraGreenBorder,
+                                focusedTextColor = InfraGreenTextPrimary,
+                                unfocusedTextColor = InfraGreenTextPrimary
+                            )
+                        )
+
+                        IconButton(
+                            onClick = {
+                                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                    putExtra(RecognizerIntent.EXTRA_LANGUAGE, "de-DE") // Defaulting to German
+                                }
+                                try {
+                                    speechRecognizerLauncher.launch(intent)
+                                } catch (e: Exception) {
+                                    // Ignoriert, falls keine Speech-App installiert ist
+                                }
+                            },
+                            modifier = Modifier
+                                .size(56.dp)
+                                .background(InfraGreenSurfaceVariant, RoundedCornerShape(12.dp))
+                                .border(1.dp, InfraGreenBorder, RoundedCornerShape(12.dp))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = "Spracheingabe",
+                                tint = InfraGreenPrimary
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.askSpirit(inputQuestion)
+                            },
+                            modifier = Modifier.height(56.dp).testTag("send_question_button"),
+                            colors = ButtonDefaults.buttonColors(containerColor = InfraGreenPrimary),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = UiStrings.getSendBtn(appLanguage),
+                                tint = Color.Black
+                            )
+                        }
+                    }
+                }
+            }
+
+            // TTS Voice Pitch Adjuster Window
+            CollapsibleHudWindow(
+                title = UiStrings.getVoicePitchLabel(appLanguage),
+                icon = Icons.Default.Tune,
+                badgeText = String.format(java.util.Locale.US, "%.2fx", currentPitch),
+                initialExpanded = false,
+                forceExpandedState = globalWindowState,
+                isScrollable = false,
+                testTag = "pitch_adjuster_window"
+            ) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Slider(
                         value = currentPitch,
                         onValueChange = { viewModel.spiritTtsManager.setPitch(it) },

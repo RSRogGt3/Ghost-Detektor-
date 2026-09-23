@@ -176,7 +176,11 @@ fun CameraBackgroundView(
                                             )
                                         }
 
-                                    val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                                    val cameraSelector = when {
+                                        cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
+                                        cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
+                                        else -> null
+                                    } ?: return@addListener
 
                                     cameraProvider.unbindAll()
                                     boundCamera = if (imageCapture != null) {

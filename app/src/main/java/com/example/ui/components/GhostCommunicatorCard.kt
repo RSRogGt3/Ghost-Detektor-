@@ -32,6 +32,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -159,6 +168,9 @@ fun GhostCommunicatorCard(
         "Gib uns ein Zeichen!"
     )
 
+    var isCommunicatorMinimized by remember { mutableStateOf(false) }
+    var isCommunicatorMaximizedHeight by remember { mutableStateOf(false) }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = InfraGreenSurface),
         border = BorderStroke(1.5.dp, if (isCommunicatorActive) InfraGreenPrimary else InfraGreenBorder),
@@ -168,16 +180,21 @@ fun GhostCommunicatorCard(
             .testTag("ghost_communicator_card")
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Header: Title + Status Pulse Indicator
+            // Header: Title + Status Pulse Indicator + Window Controls
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isCommunicatorMinimized = !isCommunicatorMinimized },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
                     Box(
                         modifier = Modifier
                             .size(12.dp)
@@ -200,7 +217,7 @@ fun GhostCommunicatorCard(
                                 color = InfraGreenPrimary,
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
+                                fontSize = 15.sp
                             )
                         )
                         Text(
@@ -214,24 +231,70 @@ fun GhostCommunicatorCard(
                     }
                 }
 
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isCommunicatorActive) InfraGreenPrimary else InfraGreenSurfaceVariant)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = if (isSpeaking) "GEIST SPRICHT" else if (isGenerating) "ANALYSE..." else if (isCommunicatorActive) "LAUSCHT..." else "INAKTIV",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (isCommunicatorActive) Color.Black else InfraGreenTextPrimaryVariant,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isCommunicatorActive) InfraGreenPrimary else InfraGreenSurfaceVariant)
+                            .padding(horizontal = 7.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = if (isSpeaking) "GEIST SPRICHT" else if (isGenerating) "ANALYSE..." else if (isCommunicatorActive) "LAUSCHT..." else "INAKTIV",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = if (isCommunicatorActive) Color.Black else InfraGreenTextPrimaryVariant,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp
+                            )
                         )
-                    )
+                    }
+
+                    if (!isCommunicatorMinimized) {
+                        IconButton(
+                            onClick = { isCommunicatorMaximizedHeight = !isCommunicatorMaximizedHeight },
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isCommunicatorMaximizedHeight) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                contentDescription = if (isCommunicatorMaximizedHeight) "Normal" else "Höhe maximieren",
+                                tint = InfraGreenPrimary,
+                                modifier = Modifier.size(17.dp)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = { isCommunicatorMinimized = !isCommunicatorMinimized },
+                        modifier = Modifier.size(30.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (!isCommunicatorMinimized) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (!isCommunicatorMinimized) "Minimieren" else "Ausklappen",
+                            tint = InfraGreenPrimary,
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
                 }
             }
 
+            AnimatedVisibility(
+                visible = !isCommunicatorMinimized,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = if (isCommunicatorMaximizedHeight) 680.dp else 420.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
             // Status Banner Message
             Box(
                 modifier = Modifier
@@ -656,6 +719,9 @@ fun GhostCommunicatorCard(
                     }
                 }
             }
+        }
+    }
+}
         }
     }
 }

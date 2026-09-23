@@ -293,6 +293,7 @@ class SoundManager {
 
     private fun playPcmTrack(buffer: ByteArray, sampleRate: Int, durationMs: Long) {
         scope.launch(Dispatchers.IO) {
+            var audioTrack: AudioTrack? = null
             try {
                 val minBuf = AudioTrack.getMinBufferSize(
                     sampleRate,
@@ -301,7 +302,7 @@ class SoundManager {
                 )
                 val bufferSize = if (minBuf > 0) minBuf else buffer.size
 
-                val audioTrack = AudioTrack.Builder()
+                val track = AudioTrack.Builder()
                     .setAudioAttributes(
                         AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -319,24 +320,27 @@ class SoundManager {
                     .setTransferMode(AudioTrack.MODE_STREAM)
                     .build()
 
-                audioTrack.play()
+                audioTrack = track
+                track.play()
 
                 // Write in chunks to prevent large buffer allocations and blocking
                 var offset = 0
                 val chunkSize = bufferSize
                 while (offset < buffer.size) {
                     val size = minOf(chunkSize, buffer.size - offset)
-                    val written = audioTrack.write(buffer, offset, size)
+                    val written = track.write(buffer, offset, size)
                     if (written <= 0) break
                     offset += written
                 }
 
                 kotlinx.coroutines.delay(100) // allow last chunk to play
+            } catch (_: Exception) {
+            } finally {
                 try {
-                    audioTrack.stop()
-                    audioTrack.release()
+                    audioTrack?.stop()
+                    audioTrack?.release()
                 } catch (_: Exception) {}
-            } catch (_: Exception) {}
+            }
         }
     }
 

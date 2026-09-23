@@ -15,12 +15,15 @@ android {
 
   defaultConfig {
     applicationId = "com.aistudio.ghostdetector.mzkv"
-    minSdk = 24
+    minSdk = 23
     targetSdk = 36
-    versionCode = 5
-    versionName = "1.4"
+    versionCode = 6
+    versionName = "1.5"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    manifestPlaceholders["MAPS_API_KEY"] = (project.findProperty("MAPS_API_KEY") as? String)
+        ?: System.getenv("MAPS_API_KEY")
+        ?: ""
   }
 
   signingConfigs {

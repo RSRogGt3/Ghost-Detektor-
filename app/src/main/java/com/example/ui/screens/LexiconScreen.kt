@@ -23,9 +23,11 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Warning
+import com.example.ui.components.CollapsibleHudWindow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -253,59 +255,71 @@ fun LexiconScreen(
             )
         }
 
-        // Search Bar
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-            placeholder = { Text("Geist, Dämon, Riss oder Siegel suchen...", color = Color.Gray, fontSize = 12.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Suchen", tint = primaryColor) },
-            singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("lexicon_search_field"),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = primaryColor,
-                unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
-            ),
-            shape = RoundedCornerShape(10.dp)
-        )
-
-        // Category Filter Chips
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        // Search & Category Filter Window
+        CollapsibleHudWindow(
+            title = "FILTER & SUCHE",
+            icon = Icons.Default.FilterList,
+            badgeText = selectedCategory.title,
+            initialExpanded = true,
+            isScrollable = false,
+            testTag = "lexicon_filter_window"
         ) {
-            LexiconCategory.values().forEach { cat ->
-                val isSelected = selectedCategory == cat
-                Box(
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Search Bar
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Geist, Dämon, Riss oder Siegel suchen...", color = Color.Gray, fontSize = 12.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Suchen", tint = primaryColor) },
+                    singleLine = true,
                     modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (isSelected) primaryColor.copy(alpha = 0.25f)
-                            else Color(0xFF101612)
-                        )
-                        .border(
-                            width = if (isSelected) 1.5.dp else 1.dp,
-                            color = if (isSelected) primaryColor else Color.DarkGray,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .clickable { selectedCategory = cat }
-                        .padding(vertical = 8.dp, horizontal = 2.dp),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .testTag("lexicon_search_field"),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = primaryColor,
+                        unfocusedBorderColor = Color.Gray.copy(alpha = 0.5f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                )
+
+                // Category Filter Chips
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
-                        text = cat.title,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (isSelected) primaryColor else Color.LightGray,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            fontSize = 8.5.sp
-                        ),
-                        maxLines = 1
-                    )
+                    LexiconCategory.values().forEach { cat ->
+                        val isSelected = selectedCategory == cat
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(
+                                    if (isSelected) primaryColor.copy(alpha = 0.25f)
+                                    else Color(0xFF101612)
+                                )
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) primaryColor else Color.DarkGray,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable { selectedCategory = cat }
+                                .padding(vertical = 8.dp, horizontal = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = cat.title,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isSelected) primaryColor else Color.LightGray,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    fontSize = 8.5.sp
+                                ),
+                                maxLines = 1
+                            )
+                        }
+                    }
                 }
             }
         }

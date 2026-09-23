@@ -812,16 +812,16 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         _backgroundScan247Enabled.value = newState
         securitySharedPrefs.edit().putBoolean("background_scan_enabled", newState).apply()
         
-        val serviceIntent = android.content.Intent(context, com.example.service.GhostBackgroundService::class.java)
-        if (newState) {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
+        try {
+            val serviceIntent = android.content.Intent(context, com.example.service.GhostBackgroundService::class.java)
+            if (newState) {
+                androidx.core.content.ContextCompat.startForegroundService(context, serviceIntent)
             } else {
+                serviceIntent.action = com.example.service.GhostBackgroundService.ACTION_STOP_SERVICE
                 context.startService(serviceIntent)
             }
-        } else {
-            serviceIntent.action = com.example.service.GhostBackgroundService.ACTION_STOP_SERVICE
-            context.startService(serviceIntent)
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -930,6 +930,9 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     vibrator.vibrate(VibrationEffect.createOneShot(300, VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    @Suppress("DEPRECATION")
+                    vibrator.vibrate(300L)
                 }
             } catch (_: Exception) {}
 

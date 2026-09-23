@@ -1,7 +1,7 @@
 package com.example.ui.screens
 
 import android.Manifest
-import android.preference.PreferenceManager
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.data.GhostDetectionEntity
+import com.example.ui.components.CollapsibleHudWindow
 import com.example.ui.components.TacticalTacticalMapFallback
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.GhostViewModel
@@ -126,71 +127,72 @@ fun MapScreen(viewModel: GhostViewModel) {
             }
         }
 
-        // Top Tactical Control Bar & Map Mode Toggle
-        Row(
+        // Top Tactical Control Bar & Map Mode Toggle Window
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp, start = 12.dp, end = 12.dp)
+                .padding(12.dp)
                 .align(Alignment.TopCenter)
-                .background(InfraGreenSurface.copy(alpha = 0.9f), RoundedCornerShape(12.dp))
-                .border(1.dp, InfraGreenBorder, RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = if (useTacticalFallback) Icons.Default.Radar else Icons.Default.Map,
-                    contentDescription = null,
-                    tint = InfraGreenPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Column {
-                    Text(
-                        text = if (useTacticalFallback) "TAKTIK-RADAR KARTE" else "OSM-KARTE",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            color = InfraGreenPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    )
-                    Text(
-                        text = "${allDetections.size} Geister erfasst",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = InfraGreenTextPrimaryVariant,
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    )
-                }
-            }
-
-            // Mode switch button
-            OutlinedButton(
-                onClick = { useTacticalFallback = !useTacticalFallback },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = InfraGreenSurfaceVariant,
-                    contentColor = InfraGreenPrimary
-                ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, InfraGreenPrimary),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                modifier = Modifier.height(36.dp).testTag("map_mode_toggle_button")
+            CollapsibleHudWindow(
+                title = if (useTacticalFallback) "TAKTIK-RADAR" else "OSM-KARTE",
+                icon = if (useTacticalFallback) Icons.Default.Radar else Icons.Default.Map,
+                badgeText = "${allDetections.size} GEISTER",
+                initialExpanded = true,
+                isScrollable = false,
+                testTag = "map_control_window"
             ) {
-                Icon(
-                    imageVector = Icons.Default.Layers,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = InfraGreenPrimary
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = if (useTacticalFallback) "Karte" else "Taktik",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "STATUS: ONLINE",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = InfraGreenPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        )
+                        Text(
+                            text = "${allDetections.size} Anomalien kartiert",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = InfraGreenTextPrimaryVariant,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        )
+                    }
+
+                    // Mode switch button
+                    OutlinedButton(
+                        onClick = { useTacticalFallback = !useTacticalFallback },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = InfraGreenSurfaceVariant,
+                            contentColor = InfraGreenPrimary
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, InfraGreenPrimary),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                        modifier = Modifier.height(36.dp).testTag("map_mode_toggle_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Layers,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = InfraGreenPrimary
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (useTacticalFallback) "Zur OSM-Karte" else "Zur Taktik-Karte",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+                }
             }
         }
     }
@@ -206,7 +208,8 @@ fun OsmMapView(
 
     // Initialize OSMDroid config once
     LaunchedEffect(Unit) {
-        Configuration.getInstance().load(context, PreferenceManager.getDefaultSharedPreferences(context))
+        val prefs = context.getSharedPreferences("${context.packageName}_osm_preferences", Context.MODE_PRIVATE)
+        Configuration.getInstance().load(context, prefs)
         Configuration.getInstance().userAgentValue = context.packageName
     }
 
@@ -253,8 +256,18 @@ fun OsmMapView(
         map.invalidate()
     }
 
-    DisposableEffect(Unit) {
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                androidx.lifecycle.Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
             mapView.onDetach()
         }
     }

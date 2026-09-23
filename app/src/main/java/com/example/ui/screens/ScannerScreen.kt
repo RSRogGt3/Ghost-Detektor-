@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radar
@@ -78,6 +79,7 @@ import com.example.ui.components.AudioWaveformCanvas
 import com.example.ui.components.CameraAnomalyOverlayCanvas
 import com.example.ui.components.CameraBackgroundView
 import com.example.ui.components.CaptureAndPortalCard
+import com.example.ui.components.CollapsibleHudWindow
 import com.example.ui.components.DimensionSigilDialog
 import com.example.ui.components.EmfMeter
 import com.example.ui.components.FilterMode
@@ -343,42 +345,23 @@ fun ScannerScreen(
             }
 
             // 1. TOP HEADER & DEVICE CONNECTION STATUS BAR
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF070C09).copy(alpha = 0.92f)),
-                border = BorderStroke(1.5.dp, filterMode.primaryColor.copy(alpha = 0.75f)),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
+            CollapsibleHudWindow(
+                title = UiStrings.getHudTitle(appLanguage),
+                icon = Icons.Default.CameraAlt,
+                badgeText = "$ghostCoins 🪙",
+                initialExpanded = true,
+                isScrollable = false,
+                testTag = "scanner_top_hud_window"
             ) {
                 Column(
-                    modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Header Row with Title, Coins Pill and Quick Buttons
+                    // Header Actions Row: Coins Pill and Quick Buttons
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.CameraAlt,
-                                contentDescription = null,
-                                tint = filterMode.primaryColor,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = UiStrings.getHudTitle(appLanguage),
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    color = filterMode.primaryColor,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    letterSpacing = 1.sp
-                                )
-                            )
-                        }
-
                         // Ghost Coin Mini Wallet Pill
                         Box(
                             modifier = Modifier
@@ -391,7 +374,7 @@ fun ScannerScreen(
                                 Text(text = "🪙", fontSize = 12.sp)
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "$ghostCoins",
+                                    text = "$ghostCoins COINS",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = Color(0xFFFFD700),
                                         fontFamily = FontFamily.Monospace,
@@ -724,114 +707,106 @@ fun ScannerScreen(
                     onToggleBatterySaver = { viewModel.toggleBatterySaverEnabled() }
                 )
 
-                // Filter Selector Chips & Intensity Slider
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                // Filter Selector Chips & Intensity Slider Window
+                CollapsibleHudWindow(
+                    title = "SPEKTRAL-FILTER & KONTRAST",
+                    icon = Icons.Default.FilterList,
+                    badgeText = filterMode.displayName,
+                    initialExpanded = true,
+                    isScrollable = false,
+                    testTag = "scanner_filter_window"
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = null,
-                            tint = filterMode.primaryColor
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "SPECTRAL FILTERANSICHT:",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                color = Color.White.copy(alpha = 0.8f),
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-
-                    Row(
+                    Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FilterMode.values().forEach { mode ->
-                            val isSelected = mode == filterMode
-                            val activeColor = mode.primaryColor
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterMode.values().forEach { mode ->
+                                val isSelected = mode == filterMode
+                                val activeColor = mode.primaryColor
 
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (isSelected) activeColor.copy(alpha = 0.25f)
-                                        else Color.Black.copy(alpha = 0.6f)
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (isSelected) activeColor.copy(alpha = 0.25f)
+                                            else Color.Black.copy(alpha = 0.6f)
+                                        )
+                                        .border(
+                                            width = if (isSelected) 2.dp else 1.dp,
+                                            color = if (isSelected) activeColor else Color.Gray.copy(alpha = 0.3f),
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable { viewModel.setFilterMode(mode) }
+                                        .padding(vertical = 10.dp, horizontal = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = mode.displayName,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            color = if (isSelected) activeColor else Color.White.copy(alpha = 0.6f),
+                                            fontFamily = FontFamily.Monospace,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            fontSize = 10.sp
+                                        )
                                     )
-                                    .border(
-                                        width = if (isSelected) 2.dp else 1.dp,
-                                        color = if (isSelected) activeColor else Color.Gray.copy(alpha = 0.3f),
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                                    .clickable { viewModel.setFilterMode(mode) }
-                                    .padding(vertical = 10.dp, horizontal = 4.dp),
-                                contentAlignment = Alignment.Center
+                                }
+                            }
+                        }
+
+                        // Filter Intensity / Contrast Slider
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .border(1.dp, filterMode.primaryColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = mode.displayName,
+                                    text = "FILTER-INTENSITÄT / KONTRAST:",
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        color = if (isSelected) activeColor else Color.White.copy(alpha = 0.6f),
+                                        color = filterMode.primaryColor,
                                         fontFamily = FontFamily.Monospace,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                                Text(
+                                    text = "${(filterIntensity * 100).toInt()}%",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = filterMode.primaryColor,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp
                                     )
                                 )
                             }
-                        }
-                    }
 
-                    // Filter Intensity / Contrast Slider
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.Black.copy(alpha = 0.6f))
-                            .border(1.dp, filterMode.primaryColor.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "FILTER-INTENSITÄT / KONTRAST:",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = filterMode.primaryColor,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
-                                )
-                            )
-                            Text(
-                                text = "${(filterIntensity * 100).toInt()}%",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = filterMode.primaryColor,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
-                                )
+                            Slider(
+                                value = filterIntensity,
+                                onValueChange = { viewModel.setFilterIntensity(it) },
+                                valueRange = 0.10f..1.00f,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = filterMode.primaryColor,
+                                    activeTrackColor = filterMode.primaryColor,
+                                    inactiveTrackColor = filterMode.primaryColor.copy(alpha = 0.25f)
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("filter_intensity_slider")
                             )
                         }
-
-                        Slider(
-                            value = filterIntensity,
-                            onValueChange = { viewModel.setFilterIntensity(it) },
-                            valueRange = 0.10f..1.00f,
-                            colors = SliderDefaults.colors(
-                                thumbColor = filterMode.primaryColor,
-                                activeTrackColor = filterMode.primaryColor,
-                                inactiveTrackColor = filterMode.primaryColor.copy(alpha = 0.25f)
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("filter_intensity_slider")
-                        )
                     }
                 }
             }
@@ -871,52 +846,26 @@ fun ScannerScreen(
                     onClearLogs = { viewModel.clearSpiritLog() }
                 )
 
-                // Spirit-Box Audio Spectrum Waveform
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0D140F)),
-                    border = BorderStroke(1.dp, filterMode.primaryColor.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
+                // Spirit-Box Audio Spectrum Waveform Window
+                CollapsibleHudWindow(
+                    title = "AUDIO-SPEKTRUM",
+                    icon = Icons.Default.GraphicEq,
+                    badgeText = if (isScanning) "ACTIVE SWEEP" else "STANDBY",
+                    initialExpanded = true,
+                    isScrollable = false,
+                    testTag = "scanner_audio_waveform_window"
                 ) {
-                    Column(
-                        modifier = Modifier.padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "SPIRIT-BOX AUDIO SPEKTRUM (STIMMEN-SCANNER)",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    color = filterMode.primaryColor,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                            Text(
-                                text = if (isScanning) "ACTIVE SWEEP" else "STANDBY",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    color = if (isScanning) Color(0xFF00FFCC) else Color.Gray,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-
-                        AudioWaveformCanvas(
-                            isActive = true,
-                            isScanning = isScanning,
-                            isGenerating = isGenerating,
-                            isSpeaking = isSpeaking,
-                            liveMicAmplitude = micAmplitude,
-                            frequencyKhz = frequencyKhz,
-                            emfLevel = emfLevel,
-                            waveColor = filterMode.primaryColor,
-                            amplitudeMultiplier = if (isSpeaking || isGenerating) 1.5f else 0.8f
-                        )
-                    }
+                    AudioWaveformCanvas(
+                        isActive = true,
+                        isScanning = isScanning,
+                        isGenerating = isGenerating,
+                        isSpeaking = isSpeaking,
+                        liveMicAmplitude = micAmplitude,
+                        frequencyKhz = frequencyKhz,
+                        emfLevel = emfLevel,
+                        waveColor = filterMode.primaryColor,
+                        amplitudeMultiplier = if (isSpeaking || isGenerating) 1.5f else 0.8f
+                    )
                 }
             }
 
