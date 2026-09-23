@@ -156,6 +156,7 @@ fun GhostHudToastSnackbar(
                                     ToastNotificationType.MILESTONE_PROGRESS -> "FORTSCHRITT"
                                     ToastNotificationType.UPGRADE_PURCHASED -> "UPGRADE"
                                     ToastNotificationType.DAILY_BONUS -> "TÄGLICHER BONUS"
+                                    ToastNotificationType.AI_DIAGNOSTIC -> "KI-DIAGNOSE"
                                 }
 
                                 Surface(

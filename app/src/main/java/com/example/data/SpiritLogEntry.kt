@@ -6,5 +6,5 @@ data class SpiritLogEntry(
     val question: String,
     val phrase: String,
     val emfLevel: Float,
-    val dangerLevel: Int
+    val dangerLevel: Int = 1
 )

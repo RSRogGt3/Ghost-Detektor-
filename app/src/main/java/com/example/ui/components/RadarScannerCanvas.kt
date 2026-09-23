@@ -65,14 +65,19 @@ fun RadarScannerCanvas(
     modifier: Modifier = Modifier,
     blips: List<RadarBlip> = emptyList(),
     filterMode: FilterMode = FilterMode.INFRA_GREEN,
+    infraLightColor: Color = filterMode.primaryColor,
     sweepSpeedMs: Int = 3000,
     isScanning: Boolean = true,
     isLiberating: Boolean = false,
+    isCalibrating: Boolean = false,
+    calibrationProgress: Float = 1.0f,
+    calibrationStatusText: String = "",
     onLiberateBlip: ((RadarBlip) -> Unit)? = null,
     onLiberateAll: (() -> Unit)? = null
 ) {
     val rotationAnim = remember { Animatable(0f) }
     val liberationWaveAnim = remember { Animatable(0f) }
+    val calibrationWaveAnim = remember { Animatable(0f) }
 
     LaunchedEffect(isScanning, sweepSpeedMs) {
         if (isScanning) {
@@ -85,6 +90,20 @@ fun RadarScannerCanvas(
             )
         } else {
             rotationAnim.snapTo(0f)
+        }
+    }
+
+    LaunchedEffect(isCalibrating) {
+        if (isCalibrating) {
+            while (true) {
+                calibrationWaveAnim.snapTo(0f)
+                calibrationWaveAnim.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(1200, easing = LinearEasing)
+                )
+            }
+        } else {
+            calibrationWaveAnim.snapTo(0f)
         }
     }
 
@@ -142,35 +161,35 @@ fun RadarScannerCanvas(
             val center = Offset(size.width / 2f, size.height / 2f)
             val maxRadius = (size.minDimension / 2f) * 0.9f
 
-            // Background Grid Rings
+            // Background Grid Rings in Infra Light Color (No red lines)
             val numRings = 4
             for (i in 1..numRings) {
                 val radius = maxRadius * (i / numRings.toFloat())
                 drawCircle(
-                    color = primaryColor.copy(alpha = 0.25f),
+                    color = infraLightColor.copy(alpha = 0.25f),
                     radius = radius,
                     center = center,
                     style = Stroke(width = 1.5.dp.toPx())
                 )
             }
 
-            // Crosshair axes (N-S, E-W)
+            // Crosshair axes (N-S, E-W) in Infra Light Color
             drawLine(
-                color = primaryColor.copy(alpha = 0.35f),
+                color = infraLightColor.copy(alpha = 0.35f),
                 start = Offset(center.x - maxRadius, center.y),
                 end = Offset(center.x + maxRadius, center.y),
                 strokeWidth = 1.5.dp.toPx()
             )
             drawLine(
-                color = primaryColor.copy(alpha = 0.35f),
+                color = infraLightColor.copy(alpha = 0.35f),
                 start = Offset(center.x, center.y - maxRadius),
                 end = Offset(center.x, center.y + maxRadius),
                 strokeWidth = 1.5.dp.toPx()
             )
 
-            // Outer Frame Ring
+            // Outer Frame Ring (Clean, no red)
             drawCircle(
-                color = if (isLiberating) Color(0xFF00FFCC) else primaryColor,
+                color = if (isLiberating) Color(0xFF00FFCC) else infraLightColor,
                 radius = maxRadius,
                 center = center,
                 style = Stroke(width = 3.dp.toPx())
@@ -178,7 +197,7 @@ fun RadarScannerCanvas(
 
             // Compass markings
             val paint = android.graphics.Paint().apply {
-                color = primaryColor.hashCode()
+                color = infraLightColor.hashCode()
                 textSize = 28f
                 isAntiAlias = true
                 textAlign = android.graphics.Paint.Align.CENTER
@@ -188,7 +207,7 @@ fun RadarScannerCanvas(
             drawContext.canvas.nativeCanvas.drawText("O", center.x + maxRadius - 24f, center.y + 10f, paint)
             drawContext.canvas.nativeCanvas.drawText("W", center.x - maxRadius + 24f, center.y + 10f, paint)
 
-            // 6 Rotating Light Cones (6 Lichtkegel)
+            // 6 Rotating Infra Light Cones (6 Infra-Lichter mit wählbarer Farbe)
             if (isScanning && !isLiberating) {
                 val baseSweepDegrees = rotationAnim.value
                 val coneCount = 6
@@ -219,8 +238,8 @@ fun RadarScannerCanvas(
                         path = conePath,
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                primaryColor.copy(alpha = coneAlpha),
-                                primaryColor.copy(alpha = coneAlpha * 0.3f),
+                                infraLightColor.copy(alpha = coneAlpha),
+                                infraLightColor.copy(alpha = coneAlpha * 0.3f),
                                 Color.Transparent
                             ),
                             center = center,
@@ -228,11 +247,11 @@ fun RadarScannerCanvas(
                         )
                     )
 
-                    // Leading beam line for each of the 6 light cones
+                    // Leading beam line for each of the 6 infra lights (no red lines)
                     val beamX = center.x + maxRadius * cos(coneRad).toFloat()
                     val beamY = center.y + maxRadius * sin(coneRad).toFloat()
                     drawLine(
-                        color = accentColor,
+                        color = infraLightColor,
                         start = center,
                         end = Offset(beamX, beamY),
                         strokeWidth = if (k == 0) 2.5.dp.toPx() else 1.8.dp.toPx()
@@ -279,7 +298,66 @@ fun RadarScannerCanvas(
                 }
             }
 
-            // Draw Detected Target Blips with "BEFREIEN" aura
+            // Concentric Auto-Calibration Pulse Waves & Reticle (When calibrating)
+            if (isCalibrating) {
+                val calibProgress = calibrationWaveAnim.value
+                val calibRadius = maxRadius * calibProgress
+                val calibAlpha = (1f - calibProgress).coerceIn(0f, 1f)
+
+                // Expanding Cyan/Neon Calibration Wave
+                drawCircle(
+                    color = Color(0xFF00FFCC).copy(alpha = calibAlpha * 0.85f),
+                    radius = calibRadius,
+                    center = center,
+                    style = Stroke(width = 2.5.dp.toPx())
+                )
+
+                // Secondary Harmonic Calibration Pulse
+                drawCircle(
+                    color = infraLightColor.copy(alpha = calibAlpha * 0.5f),
+                    radius = (calibRadius * 0.65f).coerceAtLeast(0f),
+                    center = center,
+                    style = Stroke(width = 1.5.dp.toPx())
+                )
+
+                // Calibration Target Crosshair Reticle Ring
+                val reticleRadius = maxRadius * 0.45f
+                drawCircle(
+                    color = Color(0xFF00E5FF).copy(alpha = 0.5f),
+                    radius = reticleRadius,
+                    center = center,
+                    style = Stroke(
+                        width = 1.5.dp.toPx(),
+                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
+                    )
+                )
+
+                // Calibration HUD Text in Center of Radar
+                val calibPct = (calibrationProgress.coerceIn(0f, 1f) * 100).toInt()
+                val calibTextPaint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.rgb(0, 255, 204)
+                    textSize = 28f
+                    isAntiAlias = true
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    typeface = android.graphics.Typeface.MONOSPACE
+                    isFakeBoldText = true
+                }
+                val subTextPaint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.WHITE
+                    textSize = 19f
+                    isAntiAlias = true
+                    textAlign = android.graphics.Paint.Align.CENTER
+                    typeface = android.graphics.Typeface.MONOSPACE
+                }
+
+                drawContext.canvas.nativeCanvas.drawText("🎯 KALIBRIERUNG", center.x, center.y - 18f, calibTextPaint)
+                drawContext.canvas.nativeCanvas.drawText("$calibPct%", center.x, center.y + 16f, calibTextPaint)
+                if (calibrationStatusText.isNotBlank()) {
+                    drawContext.canvas.nativeCanvas.drawText(calibrationStatusText, center.x, center.y + 44f, subTextPaint)
+                }
+            }
+
+            // Draw Detected Target Blips with NO RED LINES/RINGS
             blips.forEach { blip ->
                 val blipRad = Math.toRadians(blip.angleDegrees.toDouble())
                 val distance = maxRadius * blip.distanceRatio.coerceIn(0.15f, 0.85f)
@@ -287,21 +365,22 @@ fun RadarScannerCanvas(
                 val by = center.y + distance * sin(blipRad).toFloat()
                 val blipCenter = Offset(bx, by)
 
-                val isRedThreat = blip.dangerLevel >= 4
+                val isHighThreat = blip.dangerLevel >= 4
+                // Replaced red with amber/gold/infraLightColor so there are NO red lines or dots in ring
                 val blipColor = when (blip.category) {
-                    EntityCategory.DEMON -> Color(0xFFFF0033)
+                    EntityCategory.DEMON -> Color(0xFFFF9900)
                     EntityCategory.VAMPIRE -> Color(0xFFDD00FF)
                     EntityCategory.DIMENSION_RIFT -> Color(0xFF00E5FF)
-                    EntityCategory.GHOST -> if (isRedThreat) Color(0xFFFF2222) else blip.color
+                    EntityCategory.GHOST -> if (isHighThreat) Color(0xFFFFB300) else blip.color
                 }
 
-                if (isRedThreat || blip.category == EntityCategory.DEMON || blip.category == EntityCategory.VAMPIRE || blip.category == EntityCategory.DIMENSION_RIFT) {
-                    // Pulsing Threat / Portal Target Lock Ring
+                if (isHighThreat || blip.category == EntityCategory.DEMON || blip.category == EntityCategory.VAMPIRE || blip.category == EntityCategory.DIMENSION_RIFT) {
+                    // Pulsing Target Lock Ring (Clean Amber/Cyan/InfraLight - ZERO red lines in ring)
                     val ringColor = when (blip.category) {
-                        EntityCategory.DEMON -> Color(0xFFFF0033).copy(alpha = 0.6f)
+                        EntityCategory.DEMON -> Color(0xFFFF9900).copy(alpha = 0.65f)
                         EntityCategory.VAMPIRE -> Color(0xFFDD00FF).copy(alpha = 0.6f)
                         EntityCategory.DIMENSION_RIFT -> Color(0xFF00E5FF).copy(alpha = 0.7f)
-                        else -> Color(0xFFFF2222).copy(alpha = 0.5f)
+                        else -> infraLightColor.copy(alpha = 0.65f)
                     }
                     drawCircle(
                         color = ringColor,
@@ -330,13 +409,13 @@ fun RadarScannerCanvas(
                     center = blipCenter
                 )
 
-                // Action label
+                // Action label (Harmonic colors, no red)
                 val blipLabelPaint = android.graphics.Paint().apply {
                     color = when (blip.category) {
-                        EntityCategory.DEMON -> android.graphics.Color.RED
+                        EntityCategory.DEMON -> android.graphics.Color.rgb(255, 153, 0)
                         EntityCategory.VAMPIRE -> android.graphics.Color.MAGENTA
                         EntityCategory.DIMENSION_RIFT -> android.graphics.Color.CYAN
-                        EntityCategory.GHOST -> if (isRedThreat) android.graphics.Color.RED else android.graphics.Color.GREEN
+                        EntityCategory.GHOST -> if (isHighThreat) android.graphics.Color.rgb(255, 179, 0) else android.graphics.Color.GREEN
                     }
                     textSize = 22f
                     isAntiAlias = true
@@ -345,10 +424,10 @@ fun RadarScannerCanvas(
                     isFakeBoldText = true
                 }
                 val labelText = when (blip.category) {
-                    EntityCategory.DEMON -> "🔴 DÄMON FANGEN"
+                    EntityCategory.DEMON -> "⚡ DÄMON FANGEN"
                     EntityCategory.VAMPIRE -> "🟣 VAMPIR FANGEN"
                     EntityCategory.DIMENSION_RIFT -> "🌀 PORTAL SCHLIESSEN"
-                    EntityCategory.GHOST -> if (isRedThreat) "🔴 ROT BEFREIEN" else "✨ BEFREIEN"
+                    EntityCategory.GHOST -> if (isHighThreat) "⚡ SPEKTRAL BEFREIEN" else "✨ BEFREIEN"
                 }
                 drawContext.canvas.nativeCanvas.drawText(
                     labelText,

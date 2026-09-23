@@ -58,6 +58,24 @@ class SoundManager {
         }
     }
 
+    fun playCalibrationStepTone() {
+        if (isMuted) return
+        scope.launch {
+            try {
+                toneGen?.startTone(ToneGenerator.TONE_CDMA_PIP, 45)
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun playCalibrationSuccess() {
+        if (isMuted) return
+        scope.launch {
+            try {
+                toneGen?.startTone(ToneGenerator.TONE_PROP_PROMPT, 180)
+            } catch (_: Exception) {}
+        }
+    }
+
     fun playStaticPulse() {
         if (isMuted) return
         scope.launch(Dispatchers.IO) {

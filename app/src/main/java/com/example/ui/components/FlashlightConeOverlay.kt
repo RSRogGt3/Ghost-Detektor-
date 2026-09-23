@@ -53,7 +53,8 @@ import kotlin.random.Random
 fun FlashlightConeOverlay(
     isFlashlightActive: Boolean,
     modifier: Modifier = Modifier,
-    primaryColor: Color = Color(0xFFFFFFC0)
+    primaryColor: Color = Color(0xFFFFFFC0),
+    infraLightColor: Color = Color(0xFF00FFCC)
 ) {
     val beamAlpha by animateFloatAsState(
         targetValue = if (isFlashlightActive) 1f else 0f,
@@ -183,8 +184,8 @@ fun FlashlightConeOverlay(
 
             val spotlightBrush = Brush.radialGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = (0.45f * flickerFactor).coerceIn(0f, 1f)),
-                    primaryColor.copy(alpha = (0.25f * flickerFactor).coerceIn(0f, 1f)),
+                    Color.White.copy(alpha = (0.50f * flickerFactor).coerceIn(0f, 1f)),
+                    infraLightColor.copy(alpha = (0.35f * flickerFactor).coerceIn(0f, 1f)),
                     Color.Transparent
                 ),
                 center = spotlightCenter,
@@ -231,7 +232,7 @@ fun FlashlightConeOverlay(
                 radius = 45f
             )
             drawCircle(
-                color = primaryColor.copy(alpha = 0.15f),
+                color = infraLightColor.copy(alpha = 0.25f),
                 center = Offset(apexX, ringCenterY + 80f),
                 radius = 90f
             )
@@ -244,23 +245,23 @@ fun FlashlightConeOverlay(
                 .align(Alignment.TopStart)
                 .padding(12.dp)
                 .background(Color(0xCC051208), RoundedCornerShape(6.dp))
-                .border(1.dp, Color(0xFFFFFF00).copy(alpha = 0.8f), RoundedCornerShape(6.dp))
+                .border(1.dp, infraLightColor.copy(alpha = 0.8f), RoundedCornerShape(6.dp))
                 .padding(horizontal = 8.dp, vertical = 4.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.FlashOn,
                 contentDescription = "Flashlight Active",
-                tint = Color(0xFFFFFF00),
+                tint = infraLightColor,
                 modifier = Modifier.size(14.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "TASCHENLAMPE: FOKUSSIERTER LICHTKEGEL AN",
+                text = "TASCHENLAMPE: FOKUSSIERTER INFRA-LICHTKEGEL AN",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    color = Color(0xFFFFFF00),
+                    color = infraLightColor,
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 9.5.sp
+                    fontSize = 10.sp
                 )
             )
         }

@@ -23,7 +23,8 @@ fun GhostCompassOverlay(
     azimuth: Float,
     emfLevel: Float,
     primaryColor: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    infraLightColor: Color = primaryColor
 ) {
     val animatedAzimuth by animateFloatAsState(
         targetValue = azimuth,
@@ -42,7 +43,7 @@ fun GhostCompassOverlay(
 
             // Draw outer dashed circle
             drawCircle(
-                color = primaryColor.copy(alpha = 0.3f),
+                color = infraLightColor.copy(alpha = 0.35f),
                 radius = radius,
                 center = center,
                 style = Stroke(
@@ -53,7 +54,7 @@ fun GhostCompassOverlay(
 
             // Draw Inner circle
             drawCircle(
-                color = primaryColor.copy(alpha = 0.1f),
+                color = infraLightColor.copy(alpha = 0.15f),
                 radius = radius * 0.8f,
                 center = center,
                 style = Stroke(width = 1.dp.toPx())
@@ -70,45 +71,45 @@ fun GhostCompassOverlay(
                 }
                 drawPath(
                     path = northPath,
-                    color = primaryColor
+                    color = infraLightColor
                 )
 
                 // Draw South, East, West ticks
                 drawLine(
-                    color = primaryColor.copy(alpha = 0.6f),
+                    color = infraLightColor.copy(alpha = 0.6f),
                     start = Offset(center.x, center.y + radius - 20f),
                     end = Offset(center.x, center.y + radius),
                     strokeWidth = 3.dp.toPx()
                 )
                 drawLine(
-                    color = primaryColor.copy(alpha = 0.6f),
+                    color = infraLightColor.copy(alpha = 0.6f),
                     start = Offset(center.x + radius - 20f, center.y),
                     end = Offset(center.x + radius, center.y),
                     strokeWidth = 3.dp.toPx()
                 )
                 drawLine(
-                    color = primaryColor.copy(alpha = 0.6f),
+                    color = infraLightColor.copy(alpha = 0.6f),
                     start = Offset(center.x - radius + 20f, center.y),
                     end = Offset(center.x - radius, center.y),
                     strokeWidth = 3.dp.toPx()
                 )
 
-                // High Activity Spike Arrows (if EMF > 5.0)
+                // High Activity Spike Indicators (if EMF > 5.0) - Clean Harmonic Markers (NO RED LINES)
                 if (emfLevel > 5.0f) {
                     val spikeCount = 3
                     val offsetRadius = radius * 0.6f
                     for (i in 0 until spikeCount) {
-                        val angle = (Math.random() * 360).toFloat()
+                        val angle = (i * 120f)
                         rotate(degrees = angle, pivot = center) {
                             val arrowPath = Path().apply {
                                 moveTo(center.x, center.y - offsetRadius)
-                                lineTo(center.x - 10f, center.y - offsetRadius + 20f)
-                                lineTo(center.x + 10f, center.y - offsetRadius + 20f)
+                                lineTo(center.x - 8f, center.y - offsetRadius + 18f)
+                                lineTo(center.x + 8f, center.y - offsetRadius + 18f)
                                 close()
                             }
                             drawPath(
                                 path = arrowPath,
-                                color = Color.Red.copy(alpha = 0.8f)
+                                color = infraLightColor.copy(alpha = 0.75f)
                             )
                         }
                     }
@@ -117,13 +118,13 @@ fun GhostCompassOverlay(
             
             // Draw crosshair at center
             drawLine(
-                color = primaryColor.copy(alpha = 0.5f),
+                color = infraLightColor.copy(alpha = 0.5f),
                 start = Offset(center.x - 15f, center.y),
                 end = Offset(center.x + 15f, center.y),
                 strokeWidth = 1.dp.toPx()
             )
             drawLine(
-                color = primaryColor.copy(alpha = 0.5f),
+                color = infraLightColor.copy(alpha = 0.5f),
                 start = Offset(center.x, center.y - 15f),
                 end = Offset(center.x, center.y + 15f),
                 strokeWidth = 1.dp.toPx()

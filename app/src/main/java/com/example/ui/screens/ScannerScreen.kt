@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radar
@@ -75,6 +76,8 @@ import androidx.camera.core.ImageProxy
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.R
+import com.example.data.InfraLightColor
+import com.example.ui.components.AiModelSelectorAndDebugCard
 import com.example.ui.components.AudioWaveformCanvas
 import com.example.ui.components.CameraAnomalyOverlayCanvas
 import com.example.ui.components.CameraBackgroundView
@@ -87,6 +90,7 @@ import com.example.ui.components.FlashingRedWarningOverlay
 import com.example.ui.components.GhostCompassOverlay
 import com.example.ui.components.MagnetFieldAndShieldCard
 import com.example.ui.components.RadarScannerCanvas
+import com.example.ui.components.RadarCalibrationControlCard
 import com.example.ui.components.RealtimeEmfLineChart
 import com.example.ui.components.ScanLinesOverlay
 import com.example.ui.components.SpiritBoxTranscriptListCard
@@ -113,6 +117,7 @@ fun ScannerScreen(
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
     val filterMode by viewModel.currentFilterMode.collectAsStateWithLifecycle()
+    val infraLightColor by viewModel.infraLightColor.collectAsStateWithLifecycle()
     val filterIntensity by viewModel.filterIntensity.collectAsStateWithLifecycle()
     val emfLevel by viewModel.emfLevel.collectAsStateWithLifecycle()
     val emfHistory by viewModel.emfHistory.collectAsStateWithLifecycle()
@@ -171,6 +176,11 @@ fun ScannerScreen(
     val ghostCoins by viewModel.ghostCoins.collectAsStateWithLifecycle()
     val recentCoinToast by viewModel.recentCoinRewardToast.collectAsStateWithLifecycle()
     val celebrationMilestone by viewModel.celebrationMilestone.collectAsStateWithLifecycle()
+    val activeLanguageModel by viewModel.activeLanguageModel.collectAsStateWithLifecycle()
+    val aiDebugTelemetry by viewModel.aiDebugTelemetry.collectAsStateWithLifecycle()
+    val isTestingAiModel by viewModel.isTestingAiModel.collectAsStateWithLifecycle()
+    val customAiApiKey by viewModel.customAiApiKey.collectAsStateWithLifecycle()
+    val calibrationTelemetry by viewModel.calibrationTelemetry.collectAsStateWithLifecycle()
 
     var showSaveDialog by remember { mutableStateOf(false) }
     var captureName by remember { mutableStateOf("") }
@@ -199,6 +209,7 @@ fun ScannerScreen(
             modifier = Modifier.fillMaxSize(),
             primaryColor = filterMode.primaryColor,
             filterMode = filterMode,
+            infraLightColor = infraLightColor.color,
             filterIntensity = filterIntensity,
             isEnabled = isCameraEnabled,
             isFlashlightEnabled = isFlashlightEnabled,
@@ -208,11 +219,12 @@ fun ScannerScreen(
             }
         )
 
-        // Animated Compass Overlay
+        // Animated Compass Overlay (Harmonic infra colors, zero red lines)
         GhostCompassOverlay(
             azimuth = compassAzimuth,
             emfLevel = emfLevel,
             primaryColor = filterMode.primaryColor,
+            infraLightColor = infraLightColor.color,
             modifier = Modifier.fillMaxSize()
         )
 
@@ -242,10 +254,11 @@ fun ScannerScreen(
                 .background(tintColor)
         )
 
-        // Real-Time Camera Anomaly Targeting Overlay
+        // Real-Time Camera Anomaly Targeting Overlay (Clean infra colors, zero red lines)
         CameraAnomalyOverlayCanvas(
             anomalies = cameraAnomalies,
             filterMode = filterMode,
+            infraLightColor = infraLightColor.color,
             avgLuminance = cameraAvgLuminance,
             modifier = Modifier.fillMaxSize()
         )
@@ -254,7 +267,7 @@ fun ScannerScreen(
         if (showCrtOverlay) {
             ScanLinesOverlay(
                 modifier = Modifier.fillMaxSize(),
-                lineColor = filterMode.primaryColor.copy(alpha = 0.08f)
+                lineColor = infraLightColor.color.copy(alpha = 0.08f)
             )
         }
 
@@ -506,7 +519,7 @@ fun ScannerScreen(
                 }
             }
 
-            // Tactical Flashlight Button
+            // Tactical Flashlight Button (Uses selected Infra-Light color)
             Button(
                 onClick = { viewModel.toggleFlashlight() },
                 modifier = Modifier
@@ -514,12 +527,12 @@ fun ScannerScreen(
                     .height(46.dp)
                     .testTag("flashlight_toggle_button"),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isFlashlightEnabled) Color(0xFFFFFF00) else Color(0xFF131A15),
+                    containerColor = if (isFlashlightEnabled) infraLightColor.color else Color(0xFF131A15),
                     contentColor = if (isFlashlightEnabled) Color.Black else filterMode.primaryColor
                 ),
                 border = BorderStroke(
                     1.5.dp,
-                    if (isFlashlightEnabled) Color(0xFFFFFF00) else filterMode.primaryColor.copy(alpha = 0.6f)
+                    if (isFlashlightEnabled) infraLightColor.color else filterMode.primaryColor.copy(alpha = 0.6f)
                 ),
                 shape = RoundedCornerShape(10.dp)
             ) {
@@ -531,14 +544,97 @@ fun ScannerScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isFlashlightEnabled) "⚡ TASCHENLAMPE: FOKUSSIERTER LICHTKEGEL [AN]" else "🔦 TASCHENLAMPE & LICHTKEGEL STEUERN [AUS]",
+                    text = if (isFlashlightEnabled) "⚡ TASCHENLAMPE: FOKUSSIERTER INFRA-LICHTKEGEL [AN]" else "🔦 TASCHENLAMPE & LICHTKEGEL STEUERN [AUS]",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.6.sp
+                        fontSize = 11.5.sp,
+                        letterSpacing = 0.5.sp
                     )
                 )
+            }
+
+            // INFRA-LICHTER FARBSTEUERUNG (Change color of all infra lights)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("infra_light_color_selector"),
+                colors = CardDefaults.cardColors(containerColor = Color(0xDD08180E)),
+                border = BorderStroke(1.2.dp, infraLightColor.color.copy(alpha = 0.65f)),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Lightbulb,
+                                contentDescription = null,
+                                tint = infraLightColor.color,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "INFRA-LICHTER FARBE:",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = infraLightColor.color,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.5.sp
+                                )
+                            )
+                        }
+                        Text(
+                            text = "● ${infraLightColor.displayName}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = infraLightColor.color,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+
+                    // 6 Vibrant Infra Light Color Presets
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        InfraLightColor.values().forEach { lightColor ->
+                            val isSelected = lightColor == infraLightColor
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(
+                                        if (isSelected) lightColor.color.copy(alpha = 0.35f)
+                                        else Color.Black.copy(alpha = 0.6f)
+                                    )
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) lightColor.color else Color.Gray.copy(alpha = 0.3f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    )
+                                    .clickable { viewModel.setInfraLightColor(lightColor) }
+                                    .padding(vertical = 7.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = lightColor.displayName,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = if (isSelected) lightColor.color else Color.LightGray,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 9.sp
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             // Quick Hardware Toggles (Vibration, Radar Audio, Speech)
@@ -628,14 +724,28 @@ fun ScannerScreen(
             // === 3. TAB CONTENT SECTIONS ===
             // SECTION: RADAR & HUD
             if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.RADAR) {
-                // Central Interactive Radar Scanner Canvas
+                // Central Interactive Radar Scanner Canvas (Harmonic colors, zero red lines)
                 RadarScannerCanvas(
                     blips = radarBlips,
                     filterMode = filterMode,
+                    infraLightColor = infraLightColor.color,
                     isScanning = isScanning,
                     isLiberating = isLiberatingAnomalies,
+                    isCalibrating = calibrationTelemetry.isCalibrating,
+                    calibrationProgress = calibrationTelemetry.calibrationProgress,
+                    calibrationStatusText = calibrationTelemetry.currentStepText,
                     onLiberateAll = { viewModel.liberateRadarAnomalies() },
                     onLiberateBlip = { blip -> viewModel.handleRadarBlipClick(blip) }
+                )
+
+                // Dedicated Radar & Sensor Auto-Calibration Card (Tara-Nullabgleich)
+                RadarCalibrationControlCard(
+                    calibrationTelemetry = calibrationTelemetry,
+                    filterMode = filterMode,
+                    infraLightColor = infraLightColor,
+                    onStartCalibration = { viewModel.startAutoCalibration() },
+                    onToggleAutoCalibration = { enabled -> viewModel.toggleAutoCalibrationEnabled(enabled) },
+                    onResetCalibration = { viewModel.resetCalibration() }
                 )
 
                 // Primary Action Button: Liberate / Harmonize
@@ -807,6 +917,77 @@ fun ScannerScreen(
                                     .testTag("filter_intensity_slider")
                             )
                         }
+
+                        // Dedicated Infra-Light Selector inside Filter Window
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.Black.copy(alpha = 0.6f))
+                                .border(1.dp, infraLightColor.color.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "INFRA-LICHTER & STRAHLEN FARBE:",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = infraLightColor.color,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                                Text(
+                                    text = infraLightColor.displayName,
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = infraLightColor.color,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp
+                                    )
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                InfraLightColor.values().forEach { col ->
+                                    val isSelected = col == infraLightColor
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(
+                                                if (isSelected) col.color.copy(alpha = 0.35f)
+                                                else Color.Black.copy(alpha = 0.4f)
+                                            )
+                                            .border(
+                                                width = if (isSelected) 1.5.dp else 0.8.dp,
+                                                color = if (isSelected) col.color else Color.Gray.copy(alpha = 0.3f),
+                                                shape = RoundedCornerShape(4.dp)
+                                            )
+                                            .clickable { viewModel.setInfraLightColor(col) }
+                                            .padding(vertical = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = col.displayName,
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color = if (isSelected) col.color else Color.LightGray,
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                fontSize = 8.sp
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -834,6 +1015,19 @@ fun ScannerScreen(
 
             // SECTION: SPIRIT-BOX & AUDIO
             if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.SPIRIT_BOX) {
+                // KI-Sprachmodelle & Live-Debugger
+                AiModelSelectorAndDebugCard(
+                    activeModel = activeLanguageModel,
+                    debugTelemetry = aiDebugTelemetry,
+                    isTesting = isTestingAiModel,
+                    customApiKey = customAiApiKey,
+                    filterMode = filterMode,
+                    infraLightColor = infraLightColor,
+                    onSelectModel = { model -> viewModel.setLanguageModel(model) },
+                    onTestConnection = { model, key -> viewModel.testLanguageModelConnection(model, key) },
+                    onSaveCustomApiKey = { key -> viewModel.setCustomApiKey(key) }
+                )
+
                 // Spirit Box Live Transcripts & Communications Log History
                 SpiritBoxTranscriptListCard(
                     logs = spiritLogList,
@@ -843,7 +1037,8 @@ fun ScannerScreen(
                     onAskQuestion = { question -> viewModel.askSpirit(question) },
                     onTriggerAutoSweep = { viewModel.generateAndPlaySensorCreepyPhrase() },
                     onRespeak = { entry -> viewModel.respeakSpiritLogEntry(entry) },
-                    onClearLogs = { viewModel.clearSpiritLog() }
+                    onClearLogs = { viewModel.clearSpiritLog() },
+                    activeModel = activeLanguageModel
                 )
 
                 // Spirit-Box Audio Spectrum Waveform Window

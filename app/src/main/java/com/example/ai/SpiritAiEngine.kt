@@ -3,36 +3,369 @@ package com.example.ai
 import com.example.BuildConfig
 import com.example.ui.i18n.AppLanguage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
-import kotlin.random.Random
+import kotlin.system.measureTimeMillis
 
 class SpiritAiEngine {
 
+    // Aktuell ausgewähltes Sprachmodell
+    val activeModel = MutableStateFlow(LanguageModelConfig.GEMINI_3_5_FLASH)
+
+    // Optionaler vom Nutzer im Debug-Panel eingegebener API-Key
+    val customApiKey = MutableStateFlow("")
+
+    // Live-Telemetrie & Diagnose-Ergebnisse für das Debugging
+    private val _debugTelemetry = MutableStateFlow(
+        AiDebugTelemetry(
+            statusMessage = "Bereit für Sprachmodell-Analyse & EVP-Test"
+        )
+    )
+    val debugTelemetry: StateFlow<AiDebugTelemetry> = _debugTelemetry.asStateFlow()
+
+    fun setActiveModel(model: LanguageModelConfig) {
+        activeModel.value = model
+        _debugTelemetry.value = _debugTelemetry.value.copy(
+            model = model,
+            statusMessage = "Modell gewechselt auf: ${model.displayName}"
+        )
+    }
+
+    fun setCustomApiKey(key: String) {
+        customApiKey.value = key.trim()
+    }
+
+    /**
+     * Ermittelt den wirksamen API-Key und dessen Quelle (Custom-Key oder BuildConfig).
+     */
+    fun resolveEffectiveApiKey(): Pair<String, String> {
+        val userKey = customApiKey.value.trim()
+        if (userKey.isNotBlank()) {
+            return Pair(userKey, "Benutzerdefinierter Debug-Key")
+        }
+
+        val buildKey = try {
+            val field = BuildConfig::class.java.getField("GEMINI_API_KEY")
+            (field.get(null) as? String)?.trim() ?: ""
+        } catch (_: Exception) {
+            ""
+        }
+
+        return if (buildKey.isNotBlank() && buildKey != "MY_GEMINI_API_KEY") {
+            Pair(buildKey, "AI Studio Secrets / BuildConfig")
+        } else {
+            Pair("", "Kein gültiger API-Key (Platzhalter oder fehlt)")
+        }
+    }
+
+    /**
+     * Generiert eine EVP-Spirit-Box-Antwort unter Verwendung des gewählten Sprachmodells.
+     * Fällt bei Cloud-Fehlern automatisch und transparent auf die lokale Offline-Duden-Engine zurück.
+     */
     suspend fun generateSpiritResponse(
         question: String,
         ghostType: String,
         emfLevel: Float,
         language: AppLanguage = AppLanguage.GERMAN
     ): String {
-        val apiKey = try {
-            BuildConfig::class.java.getField("GEMINI_API_KEY").get(null) as? String ?: ""
-        } catch (_: Exception) {
-            ""
+        val currentModel = activeModel.value
+
+        // Offline-Modus direkt ohne Netzwerkaufruf ausführen
+        if (!currentModel.isCloudModel) {
+            val offlineResponse = generateOfflineSpiritResponse(question, ghostType, language)
+            _debugTelemetry.value = AiDebugTelemetry(
+                model = currentModel,
+                latencyMs = 8,
+                httpStatusCode = 200,
+                isSuccess = true,
+                statusMessage = "Offline Duden-Phantom-Synthese aktiv",
+                requestPrompt = question,
+                responseText = offlineResponse,
+                apiKeySource = "Offline Engine"
+            )
+            return offlineResponse
         }
 
-        if (apiKey.isNotBlank() && apiKey != "MY_GEMINI_API_KEY") {
+        val (apiKey, keySource) = resolveEffectiveApiKey()
+        if (apiKey.isBlank()) {
+            val offlineFallback = generateOfflineSpiritResponse(question, ghostType, language)
+            _debugTelemetry.value = AiDebugTelemetry(
+                model = currentModel,
+                latencyMs = 0,
+                httpStatusCode = 401,
+                isSuccess = false,
+                statusMessage = "API-Key fehlt. Lokaler Duden-Fallback aktiviert.",
+                requestPrompt = question,
+                responseText = offlineFallback,
+                rawError = "Kein gültiger GEMINI_API_KEY in BuildConfig oder Debug-Konsole gefunden.",
+                apiKeySource = keySource
+            )
+            return offlineFallback
+        }
+
+        return try {
+            callGeminiApi(
+                apiKey = apiKey,
+                keySource = keySource,
+                model = currentModel,
+                question = question,
+                ghostType = ghostType,
+                emfLevel = emfLevel,
+                language = language
+            )
+        } catch (e: Exception) {
+            val offlineFallback = generateOfflineSpiritResponse(question, ghostType, language)
+            _debugTelemetry.value = AiDebugTelemetry(
+                model = currentModel,
+                latencyMs = 0,
+                httpStatusCode = -1,
+                isSuccess = false,
+                statusMessage = "Ausnahme bei Modell-Anfrage: ${e.message}",
+                requestPrompt = question,
+                responseText = offlineFallback,
+                rawError = e.stackTraceToString().take(350),
+                apiKeySource = keySource
+            )
+            offlineFallback
+        }
+    }
+
+    /**
+     * Führt einen dedizierten Verbindungstest und Debugging-Lauf für das ausgewählte Sprachmodell durch.
+     */
+    suspend fun testConnection(
+        model: LanguageModelConfig = activeModel.value,
+        customKeyOverride: String? = null
+    ): AiDebugTelemetry = withContext(Dispatchers.IO) {
+        val testPrompt = "EVP-Diagnose: Sende ein kurzes 1-Satz-Status-Signal für parapsychologische Sensorprüfungen."
+
+        if (!model.isCloudModel) {
+            val result = AiDebugTelemetry(
+                model = model,
+                latencyMs = 5,
+                httpStatusCode = 200,
+                isSuccess = true,
+                statusMessage = "Lokale Duden-Phantom-Engine einsatzbereit",
+                requestPrompt = testPrompt,
+                responseText = "Signal resonant: Das lokale Duden-Ätherlexikon antwortet störungsfrei.",
+                apiKeySource = "Offline"
+            )
+            _debugTelemetry.value = result
+            return@withContext result
+        }
+
+        val (apiKey, keySource) = if (!customKeyOverride.isNullOrBlank()) {
+            Pair(customKeyOverride.trim(), "Test-Eingabe (Manuell)")
+        } else {
+            resolveEffectiveApiKey()
+        }
+
+        if (apiKey.isBlank()) {
+            val result = AiDebugTelemetry(
+                model = model,
+                latencyMs = 0,
+                httpStatusCode = 401,
+                isSuccess = false,
+                statusMessage = "Fehlender API-Key für ${model.displayName}",
+                requestPrompt = testPrompt,
+                responseText = "",
+                rawError = "Es ist kein GEMINI_API_KEY konfiguriert. Bitte Key im AI Studio Secrets-Panel oder in der Debug-Konsole eingeben.",
+                apiKeySource = keySource
+            )
+            _debugTelemetry.value = result
+            return@withContext result
+        }
+
+        val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=$apiKey"
+        var httpCode = 0
+        var rawResponse = ""
+        var rawError: String? = null
+        var isSuccess = false
+        var statusMsg = ""
+
+        val latency = measureTimeMillis {
+            var conn: HttpURLConnection? = null
             try {
-                return callGeminiApi(apiKey, question, ghostType, emfLevel, language)
-            } catch (_: Exception) {
-                // Fall back to offline spirit engine
+                val url = URL(endpoint)
+                conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json")
+                conn.doOutput = true
+                conn.connectTimeout = 15000
+                conn.readTimeout = 20000
+
+                val payload = JSONObject().apply {
+                    put("contents", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("parts", JSONArray().apply {
+                                put(JSONObject().put("text", testPrompt))
+                            })
+                        })
+                    })
+                    put("generationConfig", JSONObject().apply {
+                        put("temperature", 0.7)
+                        put("maxOutputTokens", 60)
+                    })
+                }
+
+                conn.outputStream.use { os ->
+                    os.write(payload.toString().toByteArray(Charsets.UTF_8))
+                }
+
+                httpCode = conn.responseCode
+                if (httpCode == 200) {
+                    val body = conn.inputStream.bufferedReader().use { it.readText() }
+                    val jsonResp = JSONObject(body)
+                    val candidates = jsonResp.optJSONArray("candidates")
+                    val candidate = candidates?.optJSONObject(0)
+                    val parts = candidate?.optJSONObject("content")?.optJSONArray("parts")
+                    val parsedText = parts?.optJSONObject(0)?.optString("text", "") ?: ""
+
+                    if (parsedText.isNotBlank()) {
+                        rawResponse = parsedText.trim()
+                        isSuccess = true
+                        statusMsg = "HTTP 200 OK: ${model.displayName} antwortet live!"
+                    } else {
+                        rawResponse = body.take(200)
+                        isSuccess = true
+                        statusMsg = "HTTP 200 OK: Leerer Antwort-Text"
+                    }
+                } else {
+                    val errStream: InputStream? = conn.errorStream
+                    val errBody = errStream?.bufferedReader()?.use { it.readText() } ?: "Kein Fehlertext vom Server"
+                    rawError = errBody.take(400)
+                    statusMsg = "HTTP $httpCode Fehler bei ${model.displayName}"
+                }
+            } catch (e: Exception) {
+                httpCode = -1
+                rawError = "${e.javaClass.simpleName}: ${e.message}"
+                statusMsg = "Verbindungsfehler: ${e.message}"
+            } finally {
+                conn?.disconnect()
             }
         }
 
-        return generateOfflineSpiritResponse(question, ghostType, language)
+        val result = AiDebugTelemetry(
+            model = model,
+            latencyMs = latency,
+            httpStatusCode = httpCode,
+            isSuccess = isSuccess,
+            statusMessage = statusMsg,
+            requestPrompt = testPrompt,
+            responseText = rawResponse,
+            rawError = rawError,
+            apiKeySource = keySource
+        )
+        _debugTelemetry.value = result
+        result
+    }
+
+    /**
+     * Sendet den Spirit-Box-Aufruf an das ausgewählte Gemini-Modell über HTTP POST.
+     */
+    private suspend fun callGeminiApi(
+        apiKey: String,
+        keySource: String,
+        model: LanguageModelConfig,
+        question: String,
+        ghostType: String,
+        emfLevel: Float,
+        language: AppLanguage
+    ): String = withContext(Dispatchers.IO) {
+        val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/${model.id}:generateContent?key=$apiKey"
+        val url = URL(endpoint)
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json")
+        conn.doOutput = true
+        conn.connectTimeout = 20000
+        conn.readTimeout = 25000
+
+        val langInstruction = when (language) {
+            AppLanguage.GERMAN -> "Nutze einen extrem reichhaltigen deutschen Wortschatz (inspiriert vom Duden und der deutschen Klassik/Parapsychologie: Begriffe wie Äther, Manifestation, Resonanz, Transzendenz, Schwingung, Nekromantie, Präsenz). Antworte auf Deutsch artikuliert, geheimnisvoll und ausführlich (2-3 Sätze)."
+            else -> "Respond articulately and mysteriously in ${language.displayName} (2-3 sentences), as a spectral entity communicating through a spirit box."
+        }
+
+        val systemPrompt = "Du bist ein mystisches Phantom oder Geist (Typ: $ghostType, EMF-Stärke: $emfLevel mG). $langInstruction"
+
+        val jsonPayload = JSONObject().apply {
+            put("contents", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("parts", JSONArray().apply {
+                        put(JSONObject().put("text", "$systemPrompt\nErmittler-Frage über Mikrofon: \"$question\""))
+                    })
+                })
+            })
+            put("generationConfig", JSONObject().apply {
+                put("temperature", 0.85)
+                put("topP", 0.95)
+            })
+        }
+
+        var responseText = ""
+        var httpCode = 0
+        var errorBody: String? = null
+
+        val latency = measureTimeMillis {
+            conn.outputStream.use { os ->
+                os.write(jsonPayload.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            httpCode = conn.responseCode
+            if (httpCode == 200) {
+                val body = conn.inputStream.bufferedReader().use { it.readText() }
+                val jsonResp = JSONObject(body)
+                val candidates = jsonResp.optJSONArray("candidates")
+                if (candidates != null && candidates.length() > 0) {
+                    val candidate = candidates.getJSONObject(0)
+                    val content = candidate.optJSONObject("content")
+                    val parts = content?.optJSONArray("parts")
+                    if (parts != null && parts.length() > 0) {
+                        val text = parts.getJSONObject(0).optString("text", "")
+                        if (text.isNotBlank()) {
+                            responseText = text.trim()
+                        }
+                    }
+                }
+            } else {
+                errorBody = conn.errorStream?.bufferedReader()?.use { it.readText() }
+            }
+        }
+
+        if (httpCode == 200 && responseText.isNotBlank()) {
+            _debugTelemetry.value = AiDebugTelemetry(
+                model = model,
+                latencyMs = latency,
+                httpStatusCode = httpCode,
+                isSuccess = true,
+                statusMessage = "HTTP 200 OK (${latency}ms) via ${model.displayName}",
+                requestPrompt = question,
+                responseText = responseText,
+                apiKeySource = keySource
+            )
+            return@withContext responseText
+        } else {
+            _debugTelemetry.value = AiDebugTelemetry(
+                model = model,
+                latencyMs = latency,
+                httpStatusCode = httpCode,
+                isSuccess = false,
+                statusMessage = "HTTP $httpCode Fehler bei ${model.displayName}",
+                requestPrompt = question,
+                responseText = "",
+                rawError = errorBody?.take(300) ?: "Unbekannter Fehlercode $httpCode",
+                apiKeySource = keySource
+            )
+            // Revert gracefully to offline Duden engine
+            return@withContext generateOfflineSpiritResponse(question, ghostType, language)
+        }
     }
 
     /**
@@ -170,65 +503,6 @@ class SpiritAiEngine {
                 phrases.random()
             }
         }
-    }
-
-    private suspend fun callGeminiApi(
-        apiKey: String,
-        question: String,
-        ghostType: String,
-        emfLevel: Float,
-        language: AppLanguage
-    ): String = withContext(Dispatchers.IO) {
-        val endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=$apiKey"
-        val url = URL(endpoint)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.requestMethod = "POST"
-        conn.setRequestProperty("Content-Type", "application/json")
-        conn.doOutput = true
-        conn.connectTimeout = 30000
-        conn.readTimeout = 30000
-
-        val langInstruction = when (language) {
-            AppLanguage.GERMAN -> "Nutze einen extrem reichhaltigen deutschen Wortschatz (inspiriert vom Duden und der deutschen Klassik/Parapsychologie: Begriffe wie Äther, Manifestation, Resonanz, Transzendenz, Schwingung, Nekromantie, Präsenz). Antworte auf Deutsch artikuliert, geheimnisvoll und ausführlich (2-3 Sätze)."
-            else -> "Respond articulately and mysteriously in ${language.displayName} (2-3 sentences), as a spectral entity communicating through a spirit box."
-        }
-
-        val systemPrompt = "Du bist ein mystisches Phantom oder Geist (Typ: $ghostType, EMF-Stärke: $emfLevel mG). $langInstruction"
-        
-        val jsonPayload = JSONObject().apply {
-            put("contents", JSONArray().apply {
-                put(JSONObject().apply {
-                    put("parts", JSONArray().apply {
-                        put(JSONObject().put("text", "$systemPrompt\nErmittler-Frage über Mikrofon: \"$question\""))
-                    })
-                })
-            })
-            put("generationConfig", JSONObject().apply {
-                put("temperature", 0.85)
-                put("topP", 0.95)
-            })
-        }
-
-        conn.outputStream.use { os ->
-            os.write(jsonPayload.toString().toByteArray(Charsets.UTF_8))
-        }
-
-        if (conn.responseCode == 200) {
-            val responseText = conn.inputStream.bufferedReader().use { it.readText() }
-            val jsonResp = JSONObject(responseText)
-            val candidates = jsonResp.optJSONArray("candidates")
-            if (candidates != null && candidates.length() > 0) {
-                val candidate = candidates.getJSONObject(0)
-                val content = candidate.optJSONObject("content")
-                val parts = content?.optJSONArray("parts")
-                if (parts != null && parts.length() > 0) {
-                    val text = parts.getJSONObject(0).optString("text", "")
-                    if (text.isNotBlank()) return@withContext text.trim()
-                }
-            }
-        }
-        
-        generateOfflineSpiritResponse(question, ghostType, language)
     }
 
     private fun generateOfflineSpiritResponse(question: String, ghostType: String, language: AppLanguage): String {

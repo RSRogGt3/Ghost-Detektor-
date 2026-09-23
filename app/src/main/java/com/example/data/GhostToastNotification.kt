@@ -8,7 +8,8 @@ enum class ToastNotificationType {
     MILESTONE_CLAIMED,      // 🎁 Belohnung eingelöst! +150 Coins & Titel
     MILESTONE_PROGRESS,     // ⚡ Fortschritt: 3/5 Dämonen
     UPGRADE_PURCHASED,      // 🛒 Upgrade aktiviert!
-    DAILY_BONUS             // ☀️ Täglicher Login-Bonus
+    DAILY_BONUS,            // ☀️ Täglicher Login-Bonus
+    AI_DIAGNOSTIC           // 🤖 KI-Diagnose & Sprachmodell-Status
 }
 
 data class GhostToastNotification(

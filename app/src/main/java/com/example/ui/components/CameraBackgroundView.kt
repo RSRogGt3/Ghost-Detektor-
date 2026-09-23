@@ -74,6 +74,7 @@ fun CameraBackgroundView(
     modifier: Modifier = Modifier,
     primaryColor: Color = InfraGreenPrimary,
     filterMode: FilterMode = FilterMode.INFRA_GREEN,
+    infraLightColor: Color = primaryColor,
     overlayAlpha: Float = 0.65f,
     filterIntensity: Float = 0.70f,
     isEnabled: Boolean = true,
@@ -240,6 +241,7 @@ fun CameraBackgroundView(
                     FlashlightConeOverlay(
                         isFlashlightActive = isFlashlightEnabled,
                         primaryColor = primaryColor,
+                        infraLightColor = infraLightColor,
                         modifier = Modifier.fillMaxSize()
                     )
                 }

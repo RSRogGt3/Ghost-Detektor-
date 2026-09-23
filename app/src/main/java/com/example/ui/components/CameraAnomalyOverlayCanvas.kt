@@ -34,6 +34,7 @@ fun CameraAnomalyOverlayCanvas(
     filterMode: FilterMode,
     avgLuminance: Float = 128f,
     modifier: Modifier = Modifier,
+    infraLightColor: Color = filterMode.primaryColor,
     onManualScanTarget: (xRatio: Float, yRatio: Float) -> Unit = { _, _ -> }
 ) {
     val pulseAnim = remember { Animatable(0f) }
@@ -50,7 +51,7 @@ fun CameraAnomalyOverlayCanvas(
         )
     }
 
-    val primaryColor = filterMode.primaryColor
+    val primaryColor = infraLightColor
     val accentColor = filterMode.accentColor
 
     Canvas(
@@ -114,9 +115,9 @@ fun CameraAnomalyOverlayCanvas(
             val baseRadius = 38.dp.toPx() * intensity
             val pulsingRadius = baseRadius * (1f + pulse * 0.25f)
 
-            // Anomaly color based on type & filter
+            // Anomaly color based on type & filter (Clean amber/infrared colors, no red lines)
             val (anomColor, badgeBg) = when (anomaly.type) {
-                AnomalyType.THERMAL_HOTSPOT -> Color(0xFFFF3333) to Color(0xDD880000)
+                AnomalyType.THERMAL_HOTSPOT -> Color(0xFFFF9900) to Color(0xDD885500)
                 AnomalyType.COLD_SPOT -> Color(0xFF00C8FF) to Color(0xDD004488)
                 AnomalyType.BRIGHTNESS_SPIKE -> Color(0xFFFFEE00) to Color(0xDD887700)
                 AnomalyType.MOTION_SHIFT -> primaryColor to Color(0xDD005522)

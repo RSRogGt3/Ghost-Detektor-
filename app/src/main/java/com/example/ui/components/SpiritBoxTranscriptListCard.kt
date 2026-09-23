@@ -49,6 +49,7 @@ fun SpiritBoxTranscriptListCard(
     onTriggerAutoSweep: () -> Unit,
     onRespeak: (SpiritLogEntry) -> Unit,
     onClearLogs: () -> Unit,
+    activeModel: com.example.ai.LanguageModelConfig = com.example.ai.LanguageModelConfig.GEMINI_3_5_FLASH,
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -128,6 +129,23 @@ fun SpiritBoxTranscriptListCard(
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp
+                            )
+                        )
+                    }
+
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.4f),
+                        border = androidx.compose.foundation.BorderStroke(0.7.dp, filterMode.primaryColor.copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            text = activeModel.modelTag,
+                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = filterMode.primaryColor,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 8.5.sp
                             )
                         )
                     }

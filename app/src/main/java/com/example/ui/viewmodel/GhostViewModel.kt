@@ -22,12 +22,16 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ai.SpiritAiEngine
 import com.example.audio.MicrophoneAudioAnalyzer
+import com.example.ai.AiDebugTelemetry
+import com.example.ai.LanguageModelConfig
 import com.example.audio.SoundManager
 import com.example.audio.SpiritTtsManager
 import com.example.data.GhostDatabase
 import com.example.data.GhostDetectionEntity
 import com.example.data.GhostRepository
+import com.example.data.InfraLightColor
 import com.example.data.SpiritLogEntry
+import com.example.sensor.CalibrationTelemetry
 import com.example.sensor.GhostSensorManager
 import com.example.ui.components.FilterMode
 import com.example.ui.components.RadarBlip
@@ -528,6 +532,9 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentFilterMode = MutableStateFlow(FilterMode.INFRA_GREEN)
     val currentFilterMode: StateFlow<FilterMode> = _currentFilterMode.asStateFlow()
 
+    private val _infraLightColor = MutableStateFlow(InfraLightColor.CYAN)
+    val infraLightColor: StateFlow<InfraLightColor> = _infraLightColor.asStateFlow()
+
     private val _emfLevel = MutableStateFlow(3.2f)
     val emfLevel: StateFlow<Float> = _emfLevel.asStateFlow()
 
@@ -766,6 +773,210 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             emfLevel = _emfLevel.value,
             dangerLevel = _dangerLevel.value,
             soundManager = soundManager
+        )
+    }
+
+    // AI Language Model & Debug Configuration (Gemini Sprachmodelle & EVP Telemetrie)
+    private val aiSharedPrefs = application.getSharedPreferences("ghost_ai_model_prefs", android.content.Context.MODE_PRIVATE)
+
+    val activeLanguageModel: StateFlow<LanguageModelConfig> = spiritAiEngine.activeModel.asStateFlow()
+    val customAiApiKey: StateFlow<String> = spiritAiEngine.customApiKey.asStateFlow()
+    val aiDebugTelemetry: StateFlow<AiDebugTelemetry> = spiritAiEngine.debugTelemetry
+
+    private val _isTestingAiModel = MutableStateFlow(false)
+    val isTestingAiModel: StateFlow<Boolean> = _isTestingAiModel.asStateFlow()
+
+    fun setLanguageModel(model: LanguageModelConfig) {
+        spiritAiEngine.setActiveModel(model)
+        aiSharedPrefs.edit().putString("active_model_id", model.id).apply()
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.AI_DIAGNOSTIC,
+                iconEmoji = "🤖",
+                title = "KI-MODELL AKTIV",
+                description = "${model.displayName} aktiviert.",
+                badgeColorHex = 0xFF00FFCC
+            )
+        )
+    }
+
+    fun setCustomApiKey(key: String) {
+        spiritAiEngine.setCustomApiKey(key)
+        aiSharedPrefs.edit().putString("custom_api_key", key.trim()).apply()
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.AI_DIAGNOSTIC,
+                iconEmoji = "🔑",
+                title = "API-KEY AKTUALISIERT",
+                description = if (key.isBlank()) "Standard AI Studio Secrets aktiv" else "Benutzerdefinierter Key gespeichert",
+                badgeColorHex = 0xFF00E5FF
+            )
+        )
+    }
+
+    fun testLanguageModelConnection(model: LanguageModelConfig? = null, customKeyOverride: String? = null) {
+        val targetModel = model ?: activeLanguageModel.value
+        _isTestingAiModel.value = true
+        viewModelScope.launch {
+            val result = spiritAiEngine.testConnection(targetModel, customKeyOverride)
+            _isTestingAiModel.value = false
+            if (result.isSuccess) {
+                soundManager.playGhostFreedSound()
+                showToastNotification(
+                    GhostToastNotification(
+                        type = ToastNotificationType.AI_DIAGNOSTIC,
+                        iconEmoji = "✅",
+                        title = "KI-DIAGNOSE ERFOLGREICH",
+                        description = "${targetModel.displayName}: ${result.statusMessage} (${result.latencyMs}ms)",
+                        badgeColorHex = 0xFF00FF66
+                    )
+                )
+            } else {
+                soundManager.playThreatAlert()
+                showToastNotification(
+                    GhostToastNotification(
+                        type = ToastNotificationType.AI_DIAGNOSTIC,
+                        iconEmoji = "⚠️",
+                        title = "KI-DIAGNOSE FEHLER",
+                        description = "${targetModel.displayName}: ${result.statusMessage}",
+                        badgeColorHex = 0xFFFF9900
+                    )
+                )
+            }
+        }
+    }
+
+    // Calibration State & Telemetry (Automatische Radar- & Sensor-Kalibrierung)
+    private val calibrationSharedPrefs = application.getSharedPreferences("ghost_calibration_prefs", android.content.Context.MODE_PRIVATE)
+
+    private val _calibrationTelemetry = MutableStateFlow(
+        CalibrationTelemetry(
+            isAutoCalibrationEnabled = calibrationSharedPrefs.getBoolean("auto_calibration_enabled", true),
+            calibratedEmfBaseline = calibrationSharedPrefs.getFloat("calibrated_emf_baseline", 1.8f)
+        )
+    )
+    val calibrationTelemetry: StateFlow<CalibrationTelemetry> = _calibrationTelemetry.asStateFlow()
+
+    private var calibrationJob: Job? = null
+    private var autoTrackingJob: Job? = null
+
+    fun startAutoCalibration(durationMs: Long = 2400L) {
+        if (_calibrationTelemetry.value.isCalibrating) return
+        calibrationJob?.cancel()
+
+        calibrationJob = viewModelScope.launch {
+            _calibrationTelemetry.value = _calibrationTelemetry.value.copy(
+                isCalibrating = true,
+                calibrationProgress = 0.05f,
+                currentStepText = "INITIALISIERE TARA-NULLABGLEICH..."
+            )
+            soundManager.playCalibrationStepTone()
+
+            val steps = 8
+            val stepDelay = durationMs / steps
+            val gatheredEmfSamples = mutableListOf<Float>()
+
+            val stepDescriptions = listOf(
+                "MESSUNG ELEKTROMAGNETISCHES GRUNDRAUSCHEN...",
+                "ERMITTLUNG RAUM-MAGNETFELD (X/Y/Z)...",
+                "FILTERUNG VON GERÄTE-INDUKTION...",
+                "KOMPENSATION GYRO- & DRIFT-VEKTOR...",
+                "ABGLEICH RADAR-AZIMUTH ZUM ERDMAGNETFELD...",
+                "BERECHNUNG SIGNAL-TO-NOISE RATIO...",
+                "ARRETIERUNG DES TARA-NULLPUNKTS...",
+                "KALIBRIERUNG ERFOLGREICH ABGESCHLOSSEN!"
+            )
+
+            for (i in 0 until steps) {
+                delay(stepDelay)
+                val currentRaw = sensorManager.rawUncalibratedEmf.value
+                gatheredEmfSamples.add(currentRaw)
+                soundManager.playCalibrationStepTone()
+
+                val progress = ((i + 1).toFloat() / steps).coerceIn(0.1f, 1.0f)
+                _calibrationTelemetry.value = _calibrationTelemetry.value.copy(
+                    calibrationProgress = progress,
+                    currentStepText = stepDescriptions[i],
+                    rawEmf = currentRaw
+                )
+            }
+
+            // Calculate baseline average
+            val baseline = if (gatheredEmfSamples.isNotEmpty()) {
+                gatheredEmfSamples.average().toFloat().coerceIn(0.5f, 5.0f)
+            } else {
+                1.8f
+            }
+
+            sensorManager.setCalibrationBaseline(baseline)
+            calibrationSharedPrefs.edit().putFloat("calibrated_emf_baseline", baseline).apply()
+
+            _calibrationTelemetry.value = _calibrationTelemetry.value.copy(
+                isCalibrating = false,
+                calibrationProgress = 1.0f,
+                currentStepText = "TARA ARRETIERT (${String.format(java.util.Locale.US, "%.1f", baseline)} mG)",
+                calibratedEmfBaseline = baseline,
+                netEmf = (sensorManager.rawUncalibratedEmf.value - baseline).coerceAtLeast(0.0f),
+                lastCalibrationTime = System.currentTimeMillis(),
+                totalCalibrationsCount = _calibrationTelemetry.value.totalCalibrationsCount + 1,
+                calibrationQualityPercent = Random.nextInt(98, 101)
+            )
+
+            soundManager.playCalibrationSuccess()
+            triggerVibration(150L)
+
+            showToastNotification(
+                GhostToastNotification(
+                    type = ToastNotificationType.AI_DIAGNOSTIC,
+                    iconEmoji = "🎯",
+                    title = "RADAR-KALIBRIERUNG ERFOLGREICH",
+                    description = "Nullpunkt auf ${String.format(java.util.Locale.US, "%.1f", baseline)} mG arretiert. Rauschfilter aktiv.",
+                    badgeColorHex = 0xFF00FFCC
+                )
+            )
+
+            val calibLogEntry = SpiritLogEntry(
+                question = "Radar Auto-Kalibrierung",
+                phrase = "🎯 TARA-NULLABGLEICH: Umgebungs-Grundrauschen bei ${String.format(java.util.Locale.US, "%.1f", baseline)} mG arretiert. Radar-Signal entstört.",
+                emfLevel = baseline,
+                dangerLevel = 1
+            )
+            _spiritPhraseLog.value = listOf(calibLogEntry) + _spiritPhraseLog.value
+        }
+    }
+
+    fun toggleAutoCalibrationEnabled(enabled: Boolean? = null) {
+        val newState = enabled ?: !_calibrationTelemetry.value.isAutoCalibrationEnabled
+        _calibrationTelemetry.value = _calibrationTelemetry.value.copy(isAutoCalibrationEnabled = newState)
+        calibrationSharedPrefs.edit().putBoolean("auto_calibration_enabled", newState).apply()
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.AI_DIAGNOSTIC,
+                iconEmoji = if (newState) "🎯" else "⚪",
+                title = if (newState) "AUTO-KALIBRIERUNG AN" else "AUTO-KALIBRIERUNG AUS",
+                description = if (newState) "Kontinuierlicher Hintergrund-Nullabgleich aktiv" else "Manueller Modus",
+                badgeColorHex = if (newState) 0xFF00FFCC else 0xFF888888
+            )
+        )
+    }
+
+    fun resetCalibration() {
+        sensorManager.setCalibrationBaseline(0.0f)
+        calibrationSharedPrefs.edit().putFloat("calibrated_emf_baseline", 0.0f).apply()
+        _calibrationTelemetry.value = _calibrationTelemetry.value.copy(
+            calibratedEmfBaseline = 0.0f,
+            currentStepText = "NULLPUNKT ZURÜCKGESETZT (0.0 mG)",
+            netEmf = sensorManager.rawUncalibratedEmf.value
+        )
+        soundManager.playRadarPing()
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.AI_DIAGNOSTIC,
+                iconEmoji = "🔄",
+                title = "KALIBRIERUNG ZURÜCKGESETZT",
+                description = "Nullpunkt auf 0.0 mG (Rohsignal) zurückgesetzt.",
+                badgeColorHex = 0xFF00E5FF
+            )
         )
     }
 
@@ -1340,6 +1551,16 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
+        // Restore saved AI language model & custom key
+        val savedModelId = aiSharedPrefs.getString("active_model_id", LanguageModelConfig.GEMINI_3_5_FLASH.id)
+        val matchedModel = LanguageModelConfig.values().find { it.id == savedModelId } ?: LanguageModelConfig.GEMINI_3_5_FLASH
+        spiritAiEngine.setActiveModel(matchedModel)
+
+        val savedCustomKey = aiSharedPrefs.getString("custom_api_key", "") ?: ""
+        if (savedCustomKey.isNotBlank()) {
+            spiritAiEngine.setCustomApiKey(savedCustomKey)
+        }
+
         spiritTtsManager.setLanguage(_appLanguage.value)
         val database = GhostDatabase.getDatabase(application)
         repository = GhostRepository(database.ghostDao())
@@ -1379,6 +1600,31 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             repository.prepopulateIfEmpty()
+        }
+
+        // Initialize Calibration Baseline in SensorManager & Start Auto-Tracking Drift Filter
+        val savedBaseline = calibrationSharedPrefs.getFloat("calibrated_emf_baseline", 1.8f)
+        sensorManager.setCalibrationBaseline(savedBaseline)
+
+        autoTrackingJob?.cancel()
+        autoTrackingJob = viewModelScope.launch {
+            while (true) {
+                delay(12000L)
+                if (_calibrationTelemetry.value.isAutoCalibrationEnabled && !_calibrationTelemetry.value.isCalibrating) {
+                    val raw = sensorManager.rawUncalibratedEmf.value
+                    val currentBaseline = _calibrationTelemetry.value.calibratedEmfBaseline
+                    val isSpike = _emfLevel.value > 6.0f || _dangerLevel.value >= 4
+                    if (!isSpike && sensorManager.motionIntensity.value < 1.0f) {
+                        val smoothedBaseline = (currentBaseline * 0.95f + raw * 0.05f).coerceIn(0.5f, 5.0f)
+                        sensorManager.setCalibrationBaseline(smoothedBaseline)
+                        _calibrationTelemetry.value = _calibrationTelemetry.value.copy(
+                            calibratedEmfBaseline = smoothedBaseline,
+                            netEmf = (raw - smoothedBaseline).coerceAtLeast(0.0f),
+                            rawEmf = raw
+                        )
+                    }
+                }
+            }
         }
 
         
@@ -1721,6 +1967,16 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setFilterMode(mode: FilterMode) {
         _currentFilterMode.value = mode
+    }
+
+    fun setInfraLightColor(color: InfraLightColor) {
+        _infraLightColor.value = color
+    }
+
+    fun cycleInfraLightColor() {
+        val list = InfraLightColor.values()
+        val nextIdx = (list.indexOf(_infraLightColor.value) + 1) % list.size
+        _infraLightColor.value = list[nextIdx]
     }
 
     fun setFilterIntensity(intensity: Float) {

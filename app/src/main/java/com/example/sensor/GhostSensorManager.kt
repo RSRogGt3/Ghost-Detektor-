@@ -70,6 +70,24 @@ class GhostSensorManager(private val context: Context) : SensorEventListener {
     private val _compassAzimuth = MutableStateFlow(45f)
     val compassAzimuth: StateFlow<Float> = _compassAzimuth.asStateFlow()
 
+    // Calibration baseline offset & raw uncalibrated values
+    private val _calibratedEmfBaselineOffset = MutableStateFlow(0.0f)
+    val calibratedEmfBaselineOffset: StateFlow<Float> = _calibratedEmfBaselineOffset.asStateFlow()
+
+    private val _rawUncalibratedEmf = MutableStateFlow(2.4f)
+    val rawUncalibratedEmf: StateFlow<Float> = _rawUncalibratedEmf.asStateFlow()
+
+    private val _compassAzimuthOffset = MutableStateFlow(0.0f)
+    val compassAzimuthOffset: StateFlow<Float> = _compassAzimuthOffset.asStateFlow()
+
+    fun setCalibrationBaseline(baseline: Float) {
+        _calibratedEmfBaselineOffset.value = baseline
+    }
+
+    fun setCompassAzimuthOffset(offset: Float) {
+        _compassAzimuthOffset.value = offset
+    }
+
     private val _isSensorActive = MutableStateFlow(true)
     val isSensorActive: StateFlow<Boolean> = _isSensorActive.asStateFlow()
 
@@ -237,10 +255,12 @@ class GhostSensorManager(private val context: Context) : SensorEventListener {
                 if (!hasMagnetic) {
                     val angleRad = (tick * 0.1)
                     val baseMag = 2.2f + 0.6f * sin(angleRad).toFloat() + Random.nextFloat() * 0.3f
-                    _sensorEmfStrength.value = baseMag.coerceIn(1.0f, 9.9f)
+                    _rawUncalibratedEmf.value = baseMag.coerceIn(1.0f, 9.9f)
+                    val effectiveMag = (baseMag - _calibratedEmfBaselineOffset.value).coerceIn(0.2f, 9.9f)
+                    _sensorEmfStrength.value = effectiveMag
                 }
                 if (!hasGravity) {
-                    _compassAzimuth.value = (_compassAzimuth.value + 0.5f) % 360f
+                    _compassAzimuth.value = (_compassAzimuth.value + 0.5f + _compassAzimuthOffset.value) % 360f
                 }
                 delay(if (isBatterySaverActive) 1000L else 300L)
             }
@@ -271,8 +291,10 @@ class GhostSensorManager(private val context: Context) : SensorEventListener {
                 val z = event.values[2]
                 val magTesla = sqrt(x * x + y * y + z * z)
                 
-                val calculatedEmf = (magTesla / 10f).coerceIn(1.0f, 9.9f)
-                _sensorEmfStrength.value = calculatedEmf
+                val rawCalculatedEmf = (magTesla / 10f).coerceIn(1.0f, 9.9f)
+                _rawUncalibratedEmf.value = rawCalculatedEmf
+                val effectiveEmf = (rawCalculatedEmf - _calibratedEmfBaselineOffset.value).coerceIn(0.2f, 9.9f)
+                _sensorEmfStrength.value = effectiveEmf
             }
 
             Sensor.TYPE_ACCELEROMETER -> {
@@ -290,8 +312,10 @@ class GhostSensorManager(private val context: Context) : SensorEventListener {
                 _motionIntensity.value = deltaAccel.coerceIn(0f, 10f)
 
                 if (magnetometer == null) {
-                    val motionEmf = (2.0f + deltaAccel * 1.5f).coerceIn(1.0f, 9.9f)
-                    _sensorEmfStrength.value = motionEmf
+                    val rawMotionEmf = (2.0f + deltaAccel * 1.5f).coerceIn(1.0f, 9.9f)
+                    _rawUncalibratedEmf.value = rawMotionEmf
+                    val effectiveEmf = (rawMotionEmf - _calibratedEmfBaselineOffset.value).coerceIn(0.2f, 9.9f)
+                    _sensorEmfStrength.value = effectiveEmf
                 }
             }
 
@@ -328,7 +352,7 @@ class GhostSensorManager(private val context: Context) : SensorEventListener {
                 SensorManager.getOrientation(rMatrix, orientation)
                 val azimuthInRadians = orientation[0]
                 val azimuthInDegrees = Math.toDegrees(azimuthInRadians.toDouble()).toFloat()
-                val azimuth = (azimuthInDegrees + 360f) % 360f
+                val azimuth = (azimuthInDegrees + 360f + _compassAzimuthOffset.value) % 360f
                 _compassAzimuth.value = azimuth
             }
         }
