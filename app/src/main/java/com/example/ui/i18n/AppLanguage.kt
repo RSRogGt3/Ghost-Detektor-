@@ -373,14 +373,14 @@ object UiStrings {
     }
 
     fun getTypeFilters(lang: AppLanguage): List<String> = when(lang) {
-        AppLanguage.GERMAN -> listOf("ALLE", "Poltergeist", "Phantom", "Schattenwesen", "Dämon", "Vampir", "Dimensionsriss", "Gefangen")
-        AppLanguage.ENGLISH -> listOf("ALL", "Poltergeist", "Phantom", "Shadow Being", "Demon", "Vampire", "Dimensional Rift", "Captured")
-        AppLanguage.TURKISH -> listOf("TÜMÜ", "Poltergeist", "Hayalet/Fantom", "Gölge Varlık", "İblis", "Vampir", "Boyut Yarığı", "Yakalanan")
-        AppLanguage.SPANISH -> listOf("TODOS", "Poltergeist", "Fantasma", "Ser de Sombra", "Demonio", "Vampiro", "Grieta Dimensional", "Capturado")
-        AppLanguage.FRENCH -> listOf("TOUS", "Poltergeist", "Fantôme", "Être d'Ombre", "Démon", "Vampire", "Faille Dimensionnelle", "Capturé")
-        AppLanguage.ITALIAN -> listOf("TUTTI", "Poltergeist", "Fantasma", "Essere d'Ombra", "Demone", "Vampiro", "Fenditura Dimensionale", "Catturato")
-        AppLanguage.POLISH -> listOf("WSZYSTKIE", "Poltergeist", "Fantom", "Istota Cienia", "Demon", "Wampir", "Wyrwa Wymiarowa", "Pojmany")
-        AppLanguage.DUTCH -> listOf("ALLES", "Poltergeist", "Fantoom", "Schaduwwezen", "Demon", "Vampier", "Dimensiekloof", "Gevangen")
+        AppLanguage.GERMAN -> listOf("ALLE", "Geist", "Vampir", "Schattenwesen", "Dämon", "Poltergeist", "Phantom", "Banshee", "Dimensionsriss", "Gefangen")
+        AppLanguage.ENGLISH -> listOf("ALL", "Ghost", "Vampire", "Shadow Being", "Demon", "Poltergeist", "Phantom", "Banshee", "Dimensional Rift", "Captured")
+        AppLanguage.TURKISH -> listOf("TÜMÜ", "Hayalet", "Vampir", "Gölge Varlık", "İblis", "Poltergeist", "Fantom", "Banshee", "Boyut Yarığı", "Yakalanan")
+        AppLanguage.SPANISH -> listOf("TODOS", "Fantasma", "Vampiro", "Ser de Sombra", "Demonio", "Poltergeist", "Espectro", "Banshee", "Grieta Dimensional", "Capturado")
+        AppLanguage.FRENCH -> listOf("TOUS", "Fantôme", "Vampire", "Être d'Ombre", "Démon", "Poltergeist", "Spectre", "Banshee", "Faille Dimensionnelle", "Capturé")
+        AppLanguage.ITALIAN -> listOf("TUTTI", "Spettro", "Vampiro", "Essere d'Ombra", "Demone", "Poltergeist", "Fantasma", "Banshee", "Fenditura Dimensionale", "Catturato")
+        AppLanguage.POLISH -> listOf("WSZYSTKIE", "Duch", "Wampir", "Istota Cienia", "Demon", "Poltergeist", "Fantom", "Banshee", "Wyrwa Wymiarowa", "Pojmany")
+        AppLanguage.DUTCH -> listOf("ALLES", "Geest", "Vampier", "Schaduwwezen", "Demon", "Poltergeist", "Fantoom", "Banshee", "Dimensiekloof", "Gevangen")
     }
 
     fun getExportDialogTitle(lang: AppLanguage): String = when(lang) {

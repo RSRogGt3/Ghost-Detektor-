@@ -195,7 +195,7 @@ fun CameraAnomalyOverlayCanvas(
             }
 
             val tagTitle = "ANOMALIE #${index + 1}: ${anomaly.type.displayName}"
-            val tagDetail = "DELTA: ${anomaly.label} | ${String.format("%.1f", anomaly.emuValueMg)} mG"
+            val tagDetail = "DELTA: ${anomaly.label} | ${String.format(java.util.Locale.US, "%.1f", anomaly.emuValueMg)} mG"
 
             drawContext.canvas.nativeCanvas.drawRect(
                 labelX - 4f,

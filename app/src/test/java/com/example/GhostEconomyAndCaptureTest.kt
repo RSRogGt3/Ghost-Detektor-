@@ -127,4 +127,46 @@ class GhostEconomyAndCaptureTest {
         assertEquals(1.0f, viewModel.emfLevel.value, 0.01f)
         assertEquals(1, viewModel.dangerLevel.value)
     }
+
+    @Test
+    fun testHistoryContainsDiverseEntities() = runTest {
+        viewModel.ensureDiverseEntitiesDirect()
+
+        val allList = viewModel.getAllDetectionsDirect()
+        assertTrue("History must contain entities", allList.isNotEmpty())
+
+        val hasGeist = allList.any { it.type.contains("Geist", ignoreCase = true) || it.name.contains("Geist", ignoreCase = true) }
+        val hasVampir = allList.any { it.type.contains("Vampir", ignoreCase = true) || it.name.contains("Vampir", ignoreCase = true) || it.name.contains("Nosferatu", ignoreCase = true) }
+        val hasSchatten = allList.any { it.type.contains("Schatten", ignoreCase = true) || it.name.contains("Schatten", ignoreCase = true) }
+        val hasDaemon = allList.any { it.type.contains("Dämon", ignoreCase = true) || it.name.contains("Dämon", ignoreCase = true) || it.name.contains("Belial", ignoreCase = true) }
+        val hasPoltergeist = allList.any { it.type.contains("Poltergeist", ignoreCase = true) || it.name.contains("Poltergeist", ignoreCase = true) }
+
+        assertTrue("Geister should be in history", hasGeist)
+        assertTrue("Vampire should be in history", hasVampir)
+        assertTrue("Schattenwesen should be in history", hasSchatten)
+        assertTrue("Dämonen should be in history", hasDaemon)
+        assertTrue("Poltergeister should be in history", hasPoltergeist)
+    }
+
+    @Test
+    fun testFavoriteAllAndIndividualFavoriteToggle() = runTest {
+        viewModel.ensureDiverseEntitiesDirect()
+
+        val allList = viewModel.getAllDetectionsDirect()
+        assertTrue(allList.isNotEmpty())
+
+        // Test Herz für alle
+        viewModel.toggleFavoriteAllGhostsDirect()
+
+        val updatedListAfterAllFav = viewModel.getAllDetectionsDirect()
+        assertTrue("All entities should have a heart", updatedListAfterAllFav.all { it.isFavorite })
+
+        // Test Individual Favorite Toggle
+        val firstEntity = updatedListAfterAllFav.first()
+        viewModel.toggleFavorite(firstEntity)
+        org.robolectric.shadows.ShadowLooper.idleMainLooper()
+
+        val afterSingleToggle = viewModel.getAllDetectionsDirect().first { it.id == firstEntity.id }
+        assertEquals(false, afterSingleToggle.isFavorite)
+    }
 }

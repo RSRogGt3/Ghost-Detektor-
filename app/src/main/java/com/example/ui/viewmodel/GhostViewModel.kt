@@ -1597,7 +1597,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         
         allDetections = repository.allDetections.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
 
@@ -1610,21 +1610,40 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             list.filter { item ->
                 val matchesQuery = query.isBlank() ||
                         item.name.contains(query, ignoreCase = true) ||
+                        item.type.contains(query, ignoreCase = true) ||
                         item.locationName.contains(query, ignoreCase = true) ||
-                        item.notes.contains(query, ignoreCase = true)
-                val matchesType = typeFilter == "ALLE" || typeFilter == "ALL" || typeFilter == "TÜMÜ" || typeFilter == "TODOS" || typeFilter == "TOUS" ||
-                        item.type.contains(typeFilter, ignoreCase = true) ||
-                        (typeFilter.contains("Gefangen", ignoreCase = true) && item.type.contains("GEFANGEN", ignoreCase = true)) ||
-                        (typeFilter.contains("Riss", ignoreCase = true) && item.type.contains("DIMENSION", ignoreCase = true)) ||
-                        (typeFilter.contains("Dämon", ignoreCase = true) && item.type.contains("DÄMON", ignoreCase = true)) ||
-                        (typeFilter.contains("Demon", ignoreCase = true) && item.type.contains("DÄMON", ignoreCase = true)) ||
-                        (typeFilter.contains("Vampir", ignoreCase = true) && item.type.contains("VAMPIR", ignoreCase = true))
+                        item.notes.contains(query, ignoreCase = true) ||
+                        item.lastWords.contains(query, ignoreCase = true)
+
+                val tfUpper = typeFilter.uppercase()
+                val isAllFilter = tfUpper in listOf("ALLE", "ALL", "TÜMÜ", "TODOS", "TOUS", "TUTTI", "WSZYSTKIE", "ALLES")
+
+                val matchesType = if (isAllFilter) {
+                    true
+                } else {
+                    item.type.contains(typeFilter, ignoreCase = true) ||
+                    item.name.contains(typeFilter, ignoreCase = true) ||
+                    (typeFilter.equals("Geist", ignoreCase = true) && (item.type.contains("Geist", ignoreCase = true) || item.name.contains("Geist", ignoreCase = true) || item.type.contains("Ghost", ignoreCase = true))) ||
+                    (typeFilter.equals("Ghost", ignoreCase = true) && (item.type.contains("Geist", ignoreCase = true) || item.name.contains("Geist", ignoreCase = true) || item.type.contains("Ghost", ignoreCase = true))) ||
+                    (typeFilter.equals("Vampir", ignoreCase = true) && (item.type.contains("Vampir", ignoreCase = true) || item.type.contains("Vampire", ignoreCase = true) || item.name.contains("Vampir", ignoreCase = true) || item.name.contains("Nosferatu", ignoreCase = true))) ||
+                    (typeFilter.equals("Vampire", ignoreCase = true) && (item.type.contains("Vampir", ignoreCase = true) || item.type.contains("Vampire", ignoreCase = true) || item.name.contains("Vampir", ignoreCase = true) || item.name.contains("Nosferatu", ignoreCase = true))) ||
+                    (typeFilter.equals("Schattenwesen", ignoreCase = true) && (item.type.contains("Schatten", ignoreCase = true) || item.type.contains("Shadow", ignoreCase = true) || item.name.contains("Schatten", ignoreCase = true))) ||
+                    (typeFilter.contains("Shadow", ignoreCase = true) && (item.type.contains("Schatten", ignoreCase = true) || item.type.contains("Shadow", ignoreCase = true) || item.name.contains("Schatten", ignoreCase = true))) ||
+                    (typeFilter.equals("Dämon", ignoreCase = true) && (item.type.contains("Dämon", ignoreCase = true) || item.type.contains("Demon", ignoreCase = true) || item.name.contains("Dämon", ignoreCase = true) || item.name.contains("Belial", ignoreCase = true) || item.name.contains("Azazel", ignoreCase = true))) ||
+                    (typeFilter.equals("Demon", ignoreCase = true) && (item.type.contains("Dämon", ignoreCase = true) || item.type.contains("Demon", ignoreCase = true) || item.name.contains("Dämon", ignoreCase = true))) ||
+                    (typeFilter.equals("Poltergeist", ignoreCase = true) && (item.type.contains("Poltergeist", ignoreCase = true) || item.name.contains("Poltergeist", ignoreCase = true))) ||
+                    (typeFilter.contains("Gefangen", ignoreCase = true) && (item.type.contains("GEFANGEN", ignoreCase = true) || item.name.contains("GEFANGEN", ignoreCase = true) || item.type.contains("FESTGEHALTEN", ignoreCase = true))) ||
+                    (typeFilter.contains("Captured", ignoreCase = true) && (item.type.contains("GEFANGEN", ignoreCase = true) || item.name.contains("GEFANGEN", ignoreCase = true))) ||
+                    (typeFilter.contains("Riss", ignoreCase = true) && (item.type.contains("DIMENSION", ignoreCase = true) || item.name.contains("Riss", ignoreCase = true))) ||
+                    (typeFilter.contains("Banshee", ignoreCase = true) && (item.type.contains("Banshee", ignoreCase = true) || item.name.contains("Banshee", ignoreCase = true))) ||
+                    (typeFilter.contains("Phantom", ignoreCase = true) && (item.type.contains("Phantom", ignoreCase = true) || item.name.contains("Phantom", ignoreCase = true)))
+                }
                 val matchesFav = !favOnly || item.isFavorite
                 matchesQuery && matchesType && matchesFav
             }
         }.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
 
@@ -1673,7 +1692,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                     repeat(catches) {
                         repository.insertGhost(com.example.data.GhostDetectionEntity(
                             name = "Unbekannte Entität",
-                            type = listOf("Schattenwesen", "Nebelgeist", "Poltergeist").random(),
+                            type = listOf("Geist", "Vampir", "Schattenwesen", "Dämon", "Poltergeist", "Phantom", "Banshee").random(),
                             emfLevel = 3.0f + kotlin.random.Random.nextFloat() * 2f,
                             frequencyKhz = 42.5f,
                             dangerLevel = kotlin.random.Random.nextInt(1, 4),
@@ -2188,7 +2207,7 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         customNotes: String? = null
     ) {
         viewModelScope.launch {
-            val types = listOf("Poltergeist", "Schattenwesen", "Phantom", "Banshee", "Elementar", "Orb-Vorkommen")
+            val types = listOf("Geist", "Vampir", "Schattenwesen", "Dämon", "Poltergeist", "Phantom", "Banshee", "Elementar", "Orb-Vorkommen")
             val ghostType = types[Random.nextInt(types.size)]
             val name = customName.takeUnless { it.isNullOrBlank() } ?: "$ghostType #${Random.nextInt(100, 999)}"
             val location = customLocation.takeUnless { it.isNullOrBlank() } ?: "Sektor ${Random.nextInt(1, 12)}-B"
@@ -2222,23 +2241,91 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleFavorite(ghost: GhostDetectionEntity) {
         viewModelScope.launch {
-            repository.updateGhost(ghost.copy(isFavorite = !ghost.isFavorite))
+            val newFav = !ghost.isFavorite
+            repository.updateGhost(ghost.copy(isFavorite = newFav))
             if (_selectedGhostDetail.value?.id == ghost.id) {
-                _selectedGhostDetail.value = _selectedGhostDetail.value?.copy(isFavorite = !ghost.isFavorite)
+                _selectedGhostDetail.value = _selectedGhostDetail.value?.copy(isFavorite = newFav)
             }
         }
     }
 
-    fun favoriteAllCapturedGhosts() {
+    fun toggleFavoriteAllGhosts() {
         viewModelScope.launch {
-            val allGhostsList = allDetections.value
-            val capturedGhosts = allGhostsList.filter { it.type.contains("GEFANGEN", ignoreCase = true) || it.name.contains("GEFANGEN", ignoreCase = true) }
-            val ghostsToFavorite = capturedGhosts.filter { !it.isFavorite }
-            
-            for (ghost in ghostsToFavorite) {
-                repository.updateGhost(ghost.copy(isFavorite = true))
+            val list = repository.getAllDetectionsList()
+            if (list.isEmpty()) {
+                showToastNotification(
+                    GhostToastNotification(
+                        type = ToastNotificationType.DAILY_BONUS,
+                        iconEmoji = "📜",
+                        title = "Verlauf leer",
+                        description = "Keine Entitäten im Verlauf vorhanden."
+                    )
+                )
+                return@launch
             }
+            val allAreFavorite = list.all { it.isFavorite }
+            val newState = !allAreFavorite
+            repository.setAllFavorite(newState)
+
+            // Also update selectedGhostDetail if opened
+            _selectedGhostDetail.value?.let { current ->
+                _selectedGhostDetail.value = current.copy(isFavorite = newState)
+            }
+
+            val msg = if (newState) {
+                "❤️ Herz für alle: Alle ${list.size} Entitäten (Geister, Vampire, Schattenwesen, Dämonen, Poltergeister u.a.) mit Herz markiert!"
+            } else {
+                "🤍 Herz für alle: Herz-Markierung für alle ${list.size} Entitäten aufgehoben."
+            }
+
+            showToastNotification(
+                GhostToastNotification(
+                    type = ToastNotificationType.DAILY_BONUS,
+                    iconEmoji = if (newState) "❤️" else "🤍",
+                    title = if (newState) "Herz für alle" else "Herz entfernt",
+                    description = msg,
+                    badgeColorHex = if (newState) 0xFFFF2A2AL else 0xFF888888L
+                )
+            )
         }
+    }
+
+    suspend fun toggleFavoriteAllGhostsDirect() {
+        val list = repository.getAllDetectionsList()
+        if (list.isEmpty()) return
+        val allAreFavorite = list.all { it.isFavorite }
+        val newState = !allAreFavorite
+        repository.setAllFavorite(newState)
+        _selectedGhostDetail.value?.let { current ->
+            _selectedGhostDetail.value = current.copy(isFavorite = newState)
+        }
+    }
+
+    fun favoriteAllCapturedGhosts() {
+        toggleFavoriteAllGhosts()
+    }
+
+    fun ensureDiverseEntities() {
+        viewModelScope.launch {
+            repository.ensureDiverseEntities()
+            showToastNotification(
+                GhostToastNotification(
+                    type = ToastNotificationType.DAILY_BONUS,
+                    iconEmoji = "✨",
+                    title = "Individuen aktualisiert",
+                    description = "Geister, Vampire, Schattenwesen, Dämonen & Poltergeister im Verlauf bereit.",
+                    badgeColorHex = 0xFF00FF66L
+                )
+            )
+        }
+    }
+
+    suspend fun ensureDiverseEntitiesDirect() {
+        repository.ensureDiverseEntities()
+    }
+
+    suspend fun getAllDetectionsDirect(): List<GhostDetectionEntity> {
+        return repository.getAllDetectionsList()
     }
 
     fun liberateRadarAnomalies() {
@@ -2614,7 +2701,17 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             val typeText = when (targetBlip.category) {
                 com.example.ui.components.EntityCategory.DEMON -> "DÄMON (GEFANGEN & FESTGEHALTEN)"
                 com.example.ui.components.EntityCategory.VAMPIRE -> "VAMPIR (GEFANGEN & FESTGEHALTEN)"
-                else -> "GEIST (GEFANGEN & FESTGEHALTEN)"
+                com.example.ui.components.EntityCategory.DIMENSION_RIFT -> "DIMENSIONSRISS (GESCHLOSSEN)"
+                else -> {
+                    val lbl = targetBlip.label ?: ""
+                    when {
+                        lbl.contains("Poltergeist", ignoreCase = true) -> "POLTERGEIST (GEFANGEN & FESTGEHALTEN)"
+                        lbl.contains("Schatten", ignoreCase = true) -> "SCHATTENWESEN (GEFANGEN & FESTGEHALTEN)"
+                        lbl.contains("Phantom", ignoreCase = true) -> "PHANTOM (GEFANGEN & FESTGEHALTEN)"
+                        lbl.contains("Banshee", ignoreCase = true) -> "BANSHEE (GEFANGEN & FESTGEHALTEN)"
+                        else -> "GEIST (GEFANGEN & FESTGEHALTEN)"
+                    }
+                }
             }
 
             val (meaningText, lastWordsText) = when (targetBlip.category) {

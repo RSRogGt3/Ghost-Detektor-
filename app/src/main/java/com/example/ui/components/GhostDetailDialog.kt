@@ -129,10 +129,13 @@ fun GhostDetailDialog(
                     }
 
                     Row {
-                        IconButton(onClick = { onToggleFavorite(ghost) }) {
+                        IconButton(
+                            onClick = { onToggleFavorite(ghost) },
+                            modifier = Modifier.testTag("ghost_detail_fav_button")
+                        ) {
                             Icon(
                                 imageVector = if (ghost.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Favorit",
+                                contentDescription = if (ghost.isFavorite) "Herz entfernen" else "Herz geben",
                                 tint = if (ghost.isFavorite) AlertInfraRed else InfraGreenTextPrimaryVariant
                             )
                         }

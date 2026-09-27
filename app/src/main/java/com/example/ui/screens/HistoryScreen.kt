@@ -236,65 +236,116 @@ fun HistoryScreen(
                         singleLine = true
                     )
 
-                    // Category Filter Chips & Favorites Toggle
+                    // Category Filter Chips
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(typeFilters) { type ->
+                            val isSelected = type == selectedTypeFilter
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
+                                    .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                    .clickable { viewModel.setSelectedTypeFilter(type) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Text(
+                                    text = type.uppercase(),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    // Quick Action Bar: "Herz für alle" & "Favoriten Filter" & "Individuen auffrischen"
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        LazyRow(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            items(typeFilters) { type ->
-                                val isSelected = type == selectedTypeFilter
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface)
-                                        .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                                        .clickable { viewModel.setSelectedTypeFilter(type) }
-                                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                                ) {
-                                    Text(
-                                        text = type.uppercase(),
-                                        style = MaterialTheme.typography.labelSmall.copy(
-                                            color = if (isSelected) Color.Black else MaterialTheme.colorScheme.onSurface,
-                                            fontFamily = FontFamily.Monospace,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                        )
-                                    )
-                                }
-                            }
-                        }
-
-                        // Favorites Filter Button
-                        IconButton(
-                            onClick = { viewModel.setFavoritesOnlyFilter(!favoritesOnly) },
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (favoritesOnly) AlertInfraRed.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface)
-                                .border(1.dp, if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                        ) {
-                            Icon(
-                                imageVector = if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Favoriten Filter",
-                                tint = if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // Favorite all captured Button
-                        IconButton(
-                            onClick = { viewModel.favoriteAllCapturedGhosts() },
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surface)
-                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                        // Button „Herz für alle“
+                        Button(
+                            onClick = { viewModel.toggleFavoriteAllGhosts() },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = AlertInfraRed.copy(alpha = 0.15f),
+                                contentColor = AlertInfraRed
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, AlertInfraRed),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("heart_all_button")
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Favorite,
-                                contentDescription = "Alle Gefangenen herzen",
-                                tint = AlertInfraRed
+                                contentDescription = "Herz für alle",
+                                tint = AlertInfraRed,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Herz für alle",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = AlertInfraRed,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+
+                        // Filter "Nur Favoriten"
+                        Button(
+                            onClick = { viewModel.setFavoritesOnlyFilter(!favoritesOnly) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.surface,
+                                contentColor = if (favoritesOnly) Color.Black else MaterialTheme.colorScheme.onSurface
+                            ),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (favoritesOnly) AlertInfraRed else MaterialTheme.colorScheme.outline
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("favorites_filter_toggle")
+                        ) {
+                            Icon(
+                                imageVector = if (favoritesOnly) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Favoriten filtern",
+                                tint = if (favoritesOnly) Color.Black else AlertInfraRed,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (favoritesOnly) "Favoriten (Aktiv)" else "Nur Favoriten",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.weight(1f))
+
+                        // Individuen auffrischen
+                        IconButton(
+                            onClick = { viewModel.ensureDiverseEntities() },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surface)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                                .testTag("refresh_entities_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FilterList,
+                                contentDescription = "Individuen auffrischen",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
                     }
@@ -581,7 +632,6 @@ fun GhostDiscoveryCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .clickable { onClick() }
             .testTag("ghost_card_${ghost.id}"),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         border = CardDefaults.outlinedCardBorder(enabled = true)
@@ -589,97 +639,122 @@ fun GhostDiscoveryCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Color Status Pillar
-            Box(
+            // Tappable main area for viewing details
+            Row(
                 modifier = Modifier
-                    .width(6.dp)
-                    .height(54.dp)
-                    .background(parsedColor, RoundedCornerShape(3.dp))
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable { onClick() }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // Color Status Pillar
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .height(54.dp)
+                        .background(parsedColor, RoundedCornerShape(3.dp))
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = ghost.name,
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = ghost.name,
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
-                    )
 
-                    Text(
-                        text = "${ghost.emfLevel} mG",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = if (ghost.dangerLevel >= 4) AlertInfraRed else ThermalAmber,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold
+                        Text(
+                            text = "${ghost.emfLevel} mG",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = if (ghost.dangerLevel >= 4) AlertInfraRed else ThermalAmber,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
                         )
-                    )
-                }
+                    }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "${ghost.type.uppercase()} • ${ghost.locationName}",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = if (ghost.type.contains("ROTER PUNKT") || ghost.dangerLevel >= 4) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 11.sp,
-                            fontWeight = if (ghost.dangerLevel >= 4) FontWeight.Bold else FontWeight.Normal
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "${ghost.type.uppercase()} • ${ghost.locationName}",
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = if (ghost.type.contains("ROTER PUNKT") || ghost.dangerLevel >= 4) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 11.sp,
+                                fontWeight = if (ghost.dangerLevel >= 4) FontWeight.Bold else FontWeight.Normal
+                            )
                         )
-                    )
 
-                    Text(
-                        text = dateStr,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 10.sp
+                        Text(
+                            text = dateStr,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp
+                            )
                         )
-                    )
-                }
+                    }
 
-                if (ghost.notes.isNotBlank()) {
-                    Text(
-                        text = ghost.notes.lines().firstOrNull() ?: ghost.notes,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 9.5.sp
+                    if (ghost.notes.isNotBlank()) {
+                        Text(
+                            text = ghost.notes.lines().firstOrNull() ?: ghost.notes,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 9.5.sp
+                            )
                         )
-                    )
+                    }
                 }
             }
 
-            IconButton(onClick = onToggleFavorite) {
+            // Dedicated Individual Favorite / Heart Button (48x48dp touch target)
+            IconButton(
+                onClick = onToggleFavorite,
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (ghost.isFavorite) AlertInfraRed.copy(alpha = 0.15f) else Color.Transparent)
+                    .testTag("ghost_fav_button_${ghost.id}")
+            ) {
                 Icon(
                     imageVector = if (ghost.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    contentDescription = "Favorit toggle",
-                    tint = if (ghost.isFavorite) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant
+                    contentDescription = if (ghost.isFavorite) "Herz entfernen" else "Herz vergeben",
+                    tint = if (ghost.isFavorite) AlertInfraRed else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
                 )
             }
 
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = "Detail ansehen",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            IconButton(
+                onClick = onClick,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Detail ansehen",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

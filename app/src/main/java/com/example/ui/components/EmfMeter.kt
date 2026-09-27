@@ -140,7 +140,7 @@ fun EmfMeter(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = String.format("%.1f mG", animatedEmf),
+                        text = String.format(java.util.Locale.US, "%.1f mG", animatedEmf),
                         style = MaterialTheme.typography.titleMedium.copy(
                             color = statusColor,
                             fontFamily = FontFamily.Monospace,
@@ -276,7 +276,7 @@ fun EmfMeter(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = String.format("EVP: %.1f kHz", frequencyKhz),
+                        text = String.format(java.util.Locale.US, "EVP: %.1f kHz", frequencyKhz),
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = InfraGreenTextPrimaryVariant,
                             fontFamily = FontFamily.Monospace
