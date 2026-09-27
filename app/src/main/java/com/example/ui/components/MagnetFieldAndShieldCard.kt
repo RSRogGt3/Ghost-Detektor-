@@ -101,7 +101,7 @@ fun MagnetFieldAndShieldCard(
 
     val sourceOptions = listOf(
         "Fernseher / PC-Monitor Störung",
-        "Poltergeist Magnet-Angriff",
+        "Poltergeist Magnet-Fluktuation",
         "Elektronik EMI-Frequenz",
         "Ätherische Raumspitze"
     )
@@ -220,7 +220,7 @@ fun MagnetFieldAndShieldCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isMagnetShieldActive) "🛡️ TV & MONITOR SCHILD: AKTIV (ANGRIFFE ABGEFANGEN)" else "⚠️ TV & MONITOR SCHILD: DEAKTIVIERT (ANGRIFFE UNTERBINDEN)",
+                    text = if (isMagnetShieldActive) "🛡️ TV & MONITOR SCHILD: AKTIV (SPITZEN ABGEDÄMPFT)" else "⚠️ TV & MONITOR SCHILD: DEAKTIVIERT (INTERFERENZEN FILTERN)",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontFamily = FontFamily.Monospace,
                         fontWeight = FontWeight.Bold,

@@ -65,6 +65,7 @@ fun CaptureAndPortalCard(
     onToggleAutoDimensionSealing: () -> Unit = {},
     onCloseDimension: () -> Unit,
     onSpawnDimension: () -> Unit,
+    onLiberateEntity: () -> Unit = {},
     onCaptureEntity: () -> Unit,
     onSpawnThreat: () -> Unit,
     onOpenSigilForge: () -> Unit = {},
@@ -262,11 +263,12 @@ fun CaptureAndPortalCard(
                     onSpawnDimension = onSpawnDimension
                 )
 
-                // 2. Vampire & Demon Trap Box
+                // 2. Peaceful Containment & Liberation Box
                 BoxTrapControl(
                     capturedCount = capturedCount,
                     isCapturingEntity = isCapturingEntity,
                     primaryColor = primaryColor,
+                    onLiberateEntity = onLiberateEntity,
                     onCaptureEntity = onCaptureEntity,
                     onSpawnThreat = onSpawnThreat
                 )
@@ -387,6 +389,7 @@ private fun BoxTrapControl(
     capturedCount: Int,
     isCapturingEntity: Boolean,
     primaryColor: Color,
+    onLiberateEntity: () -> Unit,
     onCaptureEntity: () -> Unit,
     onSpawnThreat: () -> Unit
 ) {
@@ -394,8 +397,8 @@ private fun BoxTrapControl(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF1C0D18))
-            .border(1.dp, Color(0xFFFF0055).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+            .background(Color(0xFF131A1F))
+            .border(1.dp, Color(0xFF00FFCC).copy(alpha = 0.5f), RoundedCornerShape(10.dp))
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -405,16 +408,16 @@ private fun BoxTrapControl(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                text = "⚡ SPEKTRAL-FALLE & DÄMONEN-SIEGEL",
+                text = "🕊️ SPEKTRAL-HARMONISIERUNG & VERLAUF",
                 style = MaterialTheme.typography.bodySmall.copy(
-                    color = Color(0xFFFF0055),
+                    color = Color(0xFF00FFCC),
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold
                 )
             )
 
             Text(
-                text = "$capturedCount GEFANGEN",
+                text = "📜 $capturedCount IM VERLAUF",
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = Color(0xFFFFCC00),
                     fontFamily = FontFamily.Monospace,
@@ -424,7 +427,7 @@ private fun BoxTrapControl(
         }
 
         Text(
-            text = "Bannt Dämonen, Vampir-Entitäten und aggressive Geister direkt vom Radar/Kamera-Feed in den Spektral-Käfig.",
+            text = "Entschärfter Scanner: Geister und Entitäten werden nicht getötet. Befreie sie friedlich ins Licht oder halte sie unversehrt im Verlauf für deine Forschung fest.",
             style = MaterialTheme.typography.bodySmall.copy(
                 color = Color.LightGray,
                 fontSize = 11.sp
@@ -433,55 +436,89 @@ private fun BoxTrapControl(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            Button(
+                onClick = onLiberateEntity,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF00E5FF),
+                    contentColor = Color.Black
+                ),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier
+                    .weight(1.2f)
+                    .testTag("liberate_box_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = "Befreien",
+                    tint = Color.Black,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "✨ BEFREIEN",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        color = Color.Black,
+                        fontSize = 10.sp
+                    )
+                )
+            }
+
             Button(
                 onClick = onCaptureEntity,
                 enabled = !isCapturingEntity,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFFF0055),
-                    contentColor = Color.White
+                    containerColor = Color(0xFFFF9900),
+                    contentColor = Color.Black
                 ),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
-                    .weight(1.4f)
+                    .weight(1.3f)
                     .testTag("capture_entity_button")
             ) {
                 Icon(
-                    imageVector = Icons.Default.AutoAwesome,
-                    contentDescription = "Fangen",
-                    tint = Color.White
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = "Festhalten",
+                    tint = Color.Black,
+                    modifier = Modifier.size(14.dp)
                 )
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = if (isCapturingEntity) "BANNT..." else "FANGEN",
+                    text = if (isCapturingEntity) "ERFASST..." else "📜 FESTHALTEN",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
+                        color = Color.Black,
+                        fontSize = 10.sp
                     )
                 )
             }
 
             OutlinedButton(
                 onClick = onSpawnThreat,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFFF0055)),
-                border = BorderStroke(1.dp, Color(0xFFFF0055)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF00FFCC)),
+                border = BorderStroke(1.dp, Color(0xFF00FFCC)),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
-                    .weight(1f)
+                    .weight(0.9f)
                     .testTag("spawn_threat_button")
             ) {
                 Icon(
                     imageVector = Icons.Default.Radar,
                     contentDescription = "Dämon / Vampir orten",
-                    tint = Color(0xFFFF0055)
+                    tint = Color(0xFF00FFCC),
+                    modifier = Modifier.size(14.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "ORTEN",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 10.sp
                     )
                 )
             }

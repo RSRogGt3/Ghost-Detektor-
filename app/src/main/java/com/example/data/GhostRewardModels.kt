@@ -146,15 +146,15 @@ object GhostRewardCatalog {
         ),
         GhostRewardMilestone(
             id = "demon_30",
-            title = "30 Dämonen-Untergang Orden",
-            description = "Vernichte den Einfluss von 30 Dämonen und schütze die Lebenden.",
+            title = "30 Dämonen-Erlösung Orden",
+            description = "Befreie oder erfasse 30 Dämonen friedlich und schütze die Lebenden.",
             category = RewardCategory.DEMONS,
             targetCount = 300,
             coinReward = 2000,
             xpReward = 3000,
             badgeIcon = "🔱",
             unlockedTitle = "Erz-Exorzist von Sankt Michael",
-            perkDescription = "Doppelte Ecto-Coins bei jedem gefangenen Dämon",
+            perkDescription = "Doppelte Ecto-Coins bei jedem erfassten oder befreiten Dämon",
             colorHex = 0xFFFF0055
         ),
 

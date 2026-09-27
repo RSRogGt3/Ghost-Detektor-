@@ -56,6 +56,11 @@ data class MagnetLogEntry(
     val noteText: String
 )
 
+enum class ScannerPeacefulMode(val label: String, val icon: String, val description: String) {
+    LIBERATE("✨ BEFREIEN", "✨", "Entlässt Geister & Entitäten friedlich ins ewige Licht"),
+    RECORD_HISTORY("📜 IM VERLAUF FESTHALTEN", "📜", "Erfasst und dokumentiert Entitäten unversehrt im Verlauf")
+}
+
 class GhostViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: GhostRepository
@@ -561,7 +566,22 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLiberatingAnomalies = MutableStateFlow(false)
     val isLiberatingAnomalies: StateFlow<Boolean> = _isLiberatingAnomalies.asStateFlow()
 
-    private val _capturedCount = MutableStateFlow(0)
+    private val _scannerPeacefulMode = MutableStateFlow(ScannerPeacefulMode.LIBERATE)
+    val scannerPeacefulMode: StateFlow<ScannerPeacefulMode> = _scannerPeacefulMode.asStateFlow()
+
+    fun setScannerPeacefulMode(mode: ScannerPeacefulMode) {
+        _scannerPeacefulMode.value = mode
+    }
+
+    fun toggleScannerPeacefulMode() {
+        _scannerPeacefulMode.value = if (_scannerPeacefulMode.value == ScannerPeacefulMode.LIBERATE) {
+            ScannerPeacefulMode.RECORD_HISTORY
+        } else {
+            ScannerPeacefulMode.LIBERATE
+        }
+    }
+
+    private val _capturedCount = MutableStateFlow(rewardSharedPrefs.getInt("captured_count", 0))
     val capturedCount: StateFlow<Int> = _capturedCount.asStateFlow()
 
     private val _activeDimensionPlane = MutableStateFlow(com.example.data.DimensionPlane.MORTAL_PRIME)
@@ -1326,21 +1346,31 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         _emfLevel.value = 1.0f
         _dangerLevel.value = 1
         _isEmfSuppressionActive.value = true
-        soundManager.playStaticPulse()
-        spiritTtsManager.speakSpiritBoxAudio("EMF-Feldstärke neutralisiert und zerstört.", emfLevel = 1.0f, dangerLevel = 1, soundManager = soundManager, isSystemAnnouncement = true)
+        soundManager.playGhostFreedSound()
+        spiritTtsManager.speakSpiritBoxAudio(
+            "EMF-Feldstärke harmonisiert. Alle Geister sanft befreit und im Verlauf archiviert.",
+            emfLevel = 1.0f,
+            dangerLevel = 1,
+            soundManager = soundManager,
+            isSystemAnnouncement = true
+        )
         val logEntry = SpiritLogEntry(
-            question = "EMF Neutralisierung",
-            phrase = "💥 EMF-FELDSTÄRKE NEUTRALISIERT: Feld auf 1.0 mG vernichtet!",
+            question = "EMF Harmonisierung",
+            phrase = "✨ EMF-FELD HARMONISIERT: Feld auf 1.0 mG beruhigt & im Verlauf festgehalten!",
             emfLevel = 1.0f,
             dangerLevel = 1
         )
         _spiritPhraseLog.value = listOf(logEntry) + _spiritPhraseLog.value
+        val activeBlip = _radarBlips.value.firstOrNull()
+        if (activeBlip != null) {
+            liberateSingleBlip(activeBlip)
+        }
     }
 
     fun toggleMagnetShield() {
         val newState = !_isMagnetShieldActive.value
         _isMagnetShieldActive.value = newState
-        val statusMsg = if (newState) "🛡️ MAGNETSCHILD AKTIVIERT: TV/Monitor-Strahlung & Angriffe werden abgefangen!" else "⚠️ MAGNETSCHILD DEAKTIVIERT: Volle Magnetfeld-Exposition"
+        val statusMsg = if (newState) "🛡️ MAGNETSCHILD AKTIVIERT: TV/Monitor-Strahlung & Spitzen werden abgedämpft!" else "⚠️ MAGNETSCHILD DEAKTIVIERT: Volle Magnetfeld-Exposition"
         val logEntry = SpiritLogEntry(
             question = "Magnet-Schild Steuerung",
             phrase = statusMsg,
@@ -2296,9 +2326,9 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
                 dangerLevel = 1,
                 locationName = currentLocationName ?: "Radar Einzel-Befreiung",
                 timestamp = System.currentTimeMillis(),
-                notes = "Einzelseelen-Befreiung direkt über Radar-Punkt.",
+                notes = "Friedliche Seelen-Befreiung ins Licht. Die Entität wurde nicht verletzt oder getötet, sondern erlöst und im Verlauf archiviert.",
                 spectralColorHex = "#00FFCC",
-                lastWords = "Danke für die Erlösung!",
+                lastWords = "Danke für die Befreiung und den Frieden.",
                 latitude = currentLatitude,
                 longitude = currentLongitude
             )
@@ -2312,8 +2342,23 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
     fun handleRadarBlipClick(blip: RadarBlip) {
         when (blip.category) {
             com.example.ui.components.EntityCategory.DIMENSION_RIFT -> closeDimensionRift(blip)
-            com.example.ui.components.EntityCategory.DEMON, com.example.ui.components.EntityCategory.VAMPIRE -> captureEntity(blip)
-            com.example.ui.components.EntityCategory.GHOST -> liberateSingleBlip(blip)
+            com.example.ui.components.EntityCategory.DEMON,
+            com.example.ui.components.EntityCategory.VAMPIRE,
+            com.example.ui.components.EntityCategory.GHOST -> {
+                if (_scannerPeacefulMode.value == ScannerPeacefulMode.LIBERATE) {
+                    liberateSingleBlip(blip)
+                } else {
+                    captureEntity(blip)
+                }
+            }
+        }
+    }
+
+    fun handleCameraTapInteraction(xRatio: Float = 0.5f, yRatio: Float = 0.5f) {
+        if (_scannerPeacefulMode.value == ScannerPeacefulMode.LIBERATE) {
+            liberateRadarAnomalies()
+        } else {
+            captureEntity()
         }
     }
 
@@ -2534,11 +2579,11 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             triggerVibrationWaveform(longArrayOf(0, 100, 60, 200, 80, 300))
 
             if (_audioFeedbackEnabled.value) {
-                soundManager.playThreatAlert()
+                soundManager.playGhostFreedSound()
                 spiritTtsManager.speakSpiritBoxAudio(
-                    "Entität erfolgreich in der Spektral-Falle gefangen.",
+                    "Entität unversehrt im Verlauf festgehalten und archiviert.",
                     emfLevel = 8.5f,
-                    dangerLevel = 2,
+                    dangerLevel = 1,
                     soundManager = soundManager,
                     isSystemAnnouncement = true
                 )
@@ -2564,60 +2609,61 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             _capturedCount.value += 1
+            rewardSharedPrefs.edit().putInt("captured_count", _capturedCount.value).apply()
 
             val typeText = when (targetBlip.category) {
-                com.example.ui.components.EntityCategory.DEMON -> "DÄMON (GEFANGEN)"
-                com.example.ui.components.EntityCategory.VAMPIRE -> "VAMPIR (GEFANGEN)"
-                else -> "GEIST (GEFANGEN)"
+                com.example.ui.components.EntityCategory.DEMON -> "DÄMON (GEFANGEN & FESTGEHALTEN)"
+                com.example.ui.components.EntityCategory.VAMPIRE -> "VAMPIR (GEFANGEN & FESTGEHALTEN)"
+                else -> "GEIST (GEFANGEN & FESTGEHALTEN)"
             }
 
             val (meaningText, lastWordsText) = when (targetBlip.category) {
                 com.example.ui.components.EntityCategory.DEMON -> {
                     Pair(
-                        "🔴 BEDEUTUNG & DEMONOLOGISCHE ANALYSE: Höllisches Wesen der Gefahrenklasse 5 (Roter Radar-Punkt).\n" +
-                        "• Elektromagnetische Signatur: Extrem hoch (${String.format(java.util.Locale.US, "%.1f", _emfLevel.value)} mG).\n" +
-                        "• Ursprung & Verhalten: Infernale Dimension. Verursacht starke Kälteeinbrüche, Poltergeist-Aktivitäten und Elektronikstörungen.\n" +
-                        "• Status im Verlauf: Mit dem Dämonen-Siegel verbannt und im Spektral-Tresor sicher eingesperrt.",
-                        "Nein! Das Siegel brennt... Der rote Punkt verblasst!"
+                        "🔴 DEMONOLOGISCHE ANALYSE (UNVERSEHRT): Infernale Entität der Klasse 5 (Roter Radar-Punkt).\n" +
+                        "• Elektromagnetische Signatur: Feldstärke ${String.format(java.util.Locale.US, "%.1f", _emfLevel.value)} mG.\n" +
+                        "• Ursprung & Verhalten: Interdimensionales Energiephänomen. Verursacht Kälteeinbrüche und Raumzeit-Schwankungen.\n" +
+                        "• Status im Verlauf: Friedlich erfasst, unversehrt im Geister-Codex festgehalten und für die Forschung archiviert (keine Vernichtung).",
+                        "Erfasst im Protokoll... Meine Energie bleibt erhalten."
                     )
                 }
                 com.example.ui.components.EntityCategory.VAMPIRE -> {
                     Pair(
-                        "🟣 BEDEUTUNG & DÄMONEN-ANALYSE: Astraal-parasitärer Vampir (Roter Radar-Punkt).\n" +
+                        "🟣 ASTRAL-ANALYSE (UNVERSEHRT): Astral-parasitäres Wesen (Roter Radar-Punkt).\n" +
                         "• Elektromagnetische Signatur: Ultra-Frequenz bei ${String.format(java.util.Locale.US, "%.1f", _frequencyKhz.value)} kHz.\n" +
-                        "• Ursprung & Verhalten: Nährt sich von feinstofflicher Lebensenergie & menschlichen Aura-Feldern. Versucht bei Annäherung den EMF-Sensor zu überlasten.\n" +
-                        "• Status im Verlauf: Durch ultraviolette Spektral-Frequenzen neutralisiert und in die Falle gesaugt.",
-                        "Dein Licht blendet mich... Ich weiche zurück!"
+                        "• Ursprung & Verhalten: Nährt sich von feinstofflichen Äther-Feldern.\n" +
+                        "• Status im Verlauf: Friedlich erfasst, unversehrt im Geister-Codex archiviert (ohne Verletzung oder Tötung).",
+                        "Im Verlauf festgehalten... Ich ruhe im Archiv."
                     )
                 }
                 else -> {
                     Pair(
-                        "✨ BEDEUTUNG & SPEKTRAL-ANALYSE: Erdgebundenes Schattenwesen (Roter Punkt - Gefahrenstufe ${targetBlip.dangerLevel}).\n" +
+                        "✨ SPEKTRAL-ANALYSE (UNVERSEHRT): Erdgebundenes Schattenwesen (Gefahrenstufe ${targetBlip.dangerLevel}).\n" +
                         "• Elektromagnetische Signatur: Feldstärke ${String.format(java.util.Locale.US, "%.1f", _emfLevel.value)} mG.\n" +
-                        "• Ursprung & Verhalten: Verdichtetes Rest-Energie-Phänomen. Reagiert hochempfindlich auf Infrarot-Kameras & Geister-Scanner.\n" +
-                        "• Status im Verlauf: Erfasst, isoliert und dauerhaft in die Containment-Kammer überführt.",
-                        "Die Dunkelheit weicht dem Licht..."
+                        "• Ursprung & Verhalten: Verdichtetes Rest-Energie-Phänomen.\n" +
+                        "• Status im Verlauf: Friedlich erfasst, unversehrt im Verlauf dokumentiert und für die Geisterforschung archiviert.",
+                        "Dokumentiert im Äther... Wir bleiben unversehrt."
                     )
                 }
             }
 
-            val msg = "⚡ ${targetBlip.label} GEFANGEN: In die Spektral-Falle & Dämonen-Siegel sicher verbannt!"
+            val msg = "📜 ${targetBlip.label} IM VERLAUF FESTGEHALTEN: Friedlich erfasst & unversehrt archiviert!"
             _liberatedBannerMessage.value = msg
 
             // Award Geister-Coins based on Entity Category
             when (targetBlip.category) {
-                com.example.ui.components.EntityCategory.DEMON -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Höllendämon gefangen! (+$c 🪙)") }
-                com.example.ui.components.EntityCategory.VAMPIRE -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Astral-Vampir gebannt! (+$c 🪙)") }
-                else -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Geist gefangen! (+$c 🪙)") }
+                com.example.ui.components.EntityCategory.DEMON -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Dämon im Verlauf festgehalten! (+$c 🪙)") }
+                com.example.ui.components.EntityCategory.VAMPIRE -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Vampir im Verlauf festgehalten! (+$c 🪙)") }
+                else -> { val c = getCoinBonusPerEntity(); awardCoins(c, "Geist im Verlauf festgehalten! (+$c 🪙)") }
             }
 
             val capturedEntity = GhostDetectionEntity(
-                name = "${targetBlip.label} [GEFANGEN]",
+                name = "${targetBlip.label} [GEFANGEN / IM VERLAUF FESTGEHALTEN]",
                 type = typeText,
                 emfLevel = _emfLevel.value,
                 frequencyKhz = _frequencyKhz.value,
                 dangerLevel = targetBlip.dangerLevel,
-                locationName = currentLocationName ?: "Spektral-Falle Containment-Kammer",
+                locationName = currentLocationName ?: "Spektral-Archiv Containment",
                 timestamp = System.currentTimeMillis(),
                 notes = meaningText,
                 spectralColorHex = "#FF0055",
@@ -2642,13 +2688,93 @@ class GhostViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             if (_audioFeedbackEnabled.value) {
                 soundManager.playGhostFreedSound()
-                spiritTtsManager.speakSpiritBoxAudio("Entität befreit", emfLevel = 8f, dangerLevel = 1, soundManager = soundManager, isSystemAnnouncement = true)
+                spiritTtsManager.speakSpiritBoxAudio("Entität ins Licht befreit.", emfLevel = 8f, dangerLevel = 1, soundManager = soundManager, isSystemAnnouncement = true)
             }
+            repository.deleteGhost(ghost)
+            _liberatedBannerMessage.value = "✨ ${ghost.name} wurde friedlich aus dem Verlauf ins Licht entlassen!"
+            val c = getCoinBonusPerEntity()
+            awardCoins(c, "Wesen aus Verlauf ins Licht befreit (+$c 🪙)")
+            if (_selectedGhostDetail.value?.id == ghost.id) {
+                _selectedGhostDetail.value = null
+            }
+        }
+    }
+
+    fun calculateGhostSellPrice(ghost: GhostDetectionEntity): Int {
+        val basePrice = when (ghost.dangerLevel) {
+            1 -> 25
+            2 -> 45
+            3 -> 75
+            4 -> 120
+            else -> 180
+        }
+        val typeBonus = when {
+            ghost.type.contains("DÄMON", ignoreCase = true) || ghost.name.contains("DÄMON", ignoreCase = true) -> 40
+            ghost.type.contains("VAMPIR", ignoreCase = true) || ghost.name.contains("VAMPIR", ignoreCase = true) -> 35
+            ghost.type.contains("GEFANGEN", ignoreCase = true) -> 20
+            else -> 10
+        }
+        val coinMultiLvl = getUpgradeLevel("upgrade_coin_multiplier")
+        val upgradeBonus = coinMultiLvl * 8
+        return basePrice + typeBonus + upgradeBonus
+    }
+
+    fun sellGhost(ghost: GhostDetectionEntity) {
+        val price = calculateGhostSellPrice(ghost)
+        triggerVibration(150L)
+        awardCoins(
+            baseAmount = price,
+            reason = "Entität '${ghost.name}' an das Okkulte Institut verkauft! (+$price 🪙)",
+            playSound = true
+        )
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.COIN_EARNED,
+                iconEmoji = "💰",
+                title = "ENTITÄT VERKAUFT!",
+                description = "${ghost.name} für +$price 🪙 an die Forschung veräußert.",
+                badgeColorHex = 0xFFFFD700
+            )
+        )
+
+        viewModelScope.launch {
             repository.deleteGhost(ghost)
             if (_selectedGhostDetail.value?.id == ghost.id) {
                 _selectedGhostDetail.value = null
             }
         }
+    }
+
+    fun sellAllCapturedGhosts(): Int {
+        val currentGhosts = allDetections.value
+        val toSell = currentGhosts.filter {
+            !it.isFavorite && (it.type.contains("GEFANGEN", ignoreCase = true) || it.name.contains("GEFANGEN", ignoreCase = true))
+        }
+        if (toSell.isEmpty()) return 0
+
+        val totalCoins = toSell.sumOf { calculateGhostSellPrice(it) }
+        triggerVibrationWaveform(longArrayOf(0, 100, 50, 150, 50, 250))
+        awardCoins(
+            baseAmount = totalCoins,
+            reason = "${toSell.size} gefangene Entitäten an die Äther-Börse verkauft! (+$totalCoins 🪙)",
+            playSound = true
+        )
+        showToastNotification(
+            GhostToastNotification(
+                type = ToastNotificationType.COIN_EARNED,
+                iconEmoji = "🪙",
+                title = "SAMMEL-VERKAUF ABGESCHLOSSEN!",
+                description = "${toSell.size} Entitäten für +$totalCoins 🪙 verkauft!",
+                badgeColorHex = 0xFFFFD700
+            )
+        )
+
+        viewModelScope.launch {
+            toSell.forEach { ghost ->
+                repository.deleteGhost(ghost)
+            }
+        }
+        return toSell.size
     }
 
     fun deleteGhost(ghost: GhostDetectionEntity) {

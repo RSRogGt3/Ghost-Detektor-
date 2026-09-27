@@ -69,7 +69,9 @@ fun GhostDetailDialog(
     onDelete: (GhostDetectionEntity) -> Unit,
     onFree: (GhostDetectionEntity) -> Unit,
     onUpdateNotes: (GhostDetectionEntity, String) -> Unit,
-    onSpeakText: (String) -> Unit
+    onSpeakText: (String) -> Unit,
+    onSell: ((GhostDetectionEntity) -> Unit)? = null,
+    sellPrice: Int = 50
 ) {
     var isEditingNotes by remember { mutableStateOf(false) }
     var notesText by remember(ghost) { mutableStateOf(ghost.notes) }
@@ -396,6 +398,31 @@ fun GhostDetailDialog(
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))
+
+                // Bottom Action: Sell Ghost for Coins to Occult Institute
+                if (onSell != null) {
+                    Button(
+                        onClick = { onSell(ghost) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E2200)),
+                        border = androidx.compose.foundation.BorderStroke(1.5.dp, Color(0xFFFFD700)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("sell_ghost_detail_button")
+                    ) {
+                        Text(text = "💰", fontSize = 16.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "AN OKKULTES INSTITUT VERKAUFEN (+$sellPrice 🪙)",
+                            color = Color(0xFFFFD700),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
 
                 // Bottom Action: Free Ghost
                 Button(

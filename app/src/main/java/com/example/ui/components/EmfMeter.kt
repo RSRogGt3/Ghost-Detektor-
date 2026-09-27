@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -213,14 +214,14 @@ fun EmfMeter(
                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Bolt,
-                                    contentDescription = null,
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = "Harmonisieren",
                                     tint = if (animatedEmf > 5.0f) Color.White else InfraGreenPrimary,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text(
-                                    text = "⚡ VERNICHTEN",
+                                    text = "✨ HARMONISIEREN",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         color = if (animatedEmf > 5.0f) Color.White else InfraGreenPrimary,
                                         fontFamily = FontFamily.Monospace,

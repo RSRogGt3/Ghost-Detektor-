@@ -501,6 +501,117 @@ fun MissionsScreen(
                         }
                     }
 
+                    // Ankaufsstelle: Verkauf von gefangenen Entitäten an das Okkulte Institut
+                    item {
+                        val capturedGhosts = allDetections.filter {
+                            !it.isFavorite && (it.type.contains("GEFANGEN", ignoreCase = true) || it.name.contains("GEFANGEN", ignoreCase = true))
+                        }
+                        val totalSellValue = remember(capturedGhosts, purchasedUpgrades) {
+                            capturedGhosts.sumOf { viewModel.calculateGhostSellPrice(it) }
+                        }
+
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF141005)),
+                            border = BorderStroke(1.2.dp, Color(0xFFFFD700).copy(alpha = 0.6f)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("ghost_pawn_shop_card")
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(text = "🏛️", fontSize = 20.sp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text(
+                                                text = "PARAPSYCHOLOGISCHE ANKAUFSTELLE",
+                                                style = MaterialTheme.typography.labelMedium.copy(
+                                                    color = Color(0xFFFFD700),
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 11.sp
+                                                )
+                                            )
+                                            Text(
+                                                text = "Verkaufe gefangene Wesen für Spektral-Forschung",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    color = Color.LightGray,
+                                                    fontFamily = FontFamily.Monospace,
+                                                    fontSize = 9.sp
+                                                )
+                                            )
+                                        }
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color(0xFF261D00))
+                                            .border(1.dp, Color(0xFFFFD700).copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "${capturedGhosts.size} IM TRESOR",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                color = Color(0xFFFFD700),
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 9.sp
+                                            )
+                                        )
+                                    }
+                                }
+
+                                if (capturedGhosts.isNotEmpty()) {
+                                    Button(
+                                        onClick = { viewModel.sellAllCapturedGhosts() },
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color(0xFFFFD700),
+                                            contentColor = Color.Black
+                                        ),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(42.dp)
+                                            .testTag("sell_all_captured_button")
+                                    ) {
+                                        Text(text = "💰", fontSize = 16.sp)
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "ALLE GEFANGENEN VERKAUFEN (+$totalSellValue 🪙)",
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontFamily = FontFamily.Monospace,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.sp,
+                                                color = Color.Black
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    Text(
+                                        text = "Keine gefangenen Wesen im Tresor vorhanden. Fange Dämonen oder Vampire mit der Spektral-Falle im Radar!",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            color = Color.Gray,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 9.5.sp
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     items(GhostRewardCatalog.allShopUpgrades, key = { it.id }) { upgrade ->
                         val currentLevel = viewModel.getUpgradeLevel(upgrade.id)
                         val isMax = currentLevel >= upgrade.maxLevel

@@ -17,8 +17,8 @@ android {
     applicationId = "com.aistudio.ghostdetector.mzkv"
     minSdk = 23
     targetSdk = 36
-    versionCode = 6
-    versionName = "1.5"
+    versionCode = 7
+    versionName = "1.6"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     manifestPlaceholders["MAPS_API_KEY"] = (project.findProperty("MAPS_API_KEY") as? String)

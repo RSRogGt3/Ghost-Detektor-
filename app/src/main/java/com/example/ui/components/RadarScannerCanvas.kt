@@ -68,6 +68,7 @@ fun RadarScannerCanvas(
     infraLightColor: Color = filterMode.primaryColor,
     sweepSpeedMs: Int = 3000,
     isScanning: Boolean = true,
+    isLiberateMode: Boolean = true,
     isLiberating: Boolean = false,
     isCalibrating: Boolean = false,
     calibrationProgress: Float = 1.0f,
@@ -424,10 +425,10 @@ fun RadarScannerCanvas(
                     isFakeBoldText = true
                 }
                 val labelText = when (blip.category) {
-                    EntityCategory.DEMON -> "⚡ DÄMON FANGEN"
-                    EntityCategory.VAMPIRE -> "🟣 VAMPIR FANGEN"
+                    EntityCategory.DEMON -> if (isLiberateMode) "✨ DÄMON BEFREIEN" else "📜 DÄMON FESTHALTEN"
+                    EntityCategory.VAMPIRE -> if (isLiberateMode) "✨ VAMPIR BEFREIEN" else "📜 VAMPIR FESTHALTEN"
                     EntityCategory.DIMENSION_RIFT -> "🌀 PORTAL SCHLIESSEN"
-                    EntityCategory.GHOST -> if (isHighThreat) "⚡ SPEKTRAL BEFREIEN" else "✨ BEFREIEN"
+                    EntityCategory.GHOST -> if (isLiberateMode) (if (isHighThreat) "✨ HARMONISIEREN" else "✨ BEFREIEN") else "📜 GEIST FESTHALTEN"
                 }
                 drawContext.canvas.nativeCanvas.drawText(
                     labelText,

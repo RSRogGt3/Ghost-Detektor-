@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Radar
@@ -153,6 +154,7 @@ fun ScannerScreen(
     val capturedCount by viewModel.capturedCount.collectAsStateWithLifecycle()
     val isClosingDimension by viewModel.isClosingDimension.collectAsStateWithLifecycle()
     val isCapturingEntity by viewModel.isCapturingEntity.collectAsStateWithLifecycle()
+    val scannerPeacefulMode by viewModel.scannerPeacefulMode.collectAsStateWithLifecycle()
     val demonVampireCount by viewModel.demonVampireCount.collectAsStateWithLifecycle()
     val activeDimension by viewModel.activeDimensionPlane.collectAsStateWithLifecycle()
     val activeSigil by viewModel.activeSigil.collectAsStateWithLifecycle()
@@ -260,6 +262,7 @@ fun ScannerScreen(
             filterMode = filterMode,
             infraLightColor = infraLightColor.color,
             avgLuminance = cameraAvgLuminance,
+            onManualScanTarget = { x, y -> viewModel.handleCameraTapInteraction(x, y) },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -724,12 +727,75 @@ fun ScannerScreen(
             // === 3. TAB CONTENT SECTIONS ===
             // SECTION: RADAR & HUD
             if (selectedTab == ScannerModuleTab.ALL || selectedTab == ScannerModuleTab.RADAR) {
+                // Scanner Peaceful Focus Bar (Befreien vs. Im Verlauf festhalten)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color(0xFF071B20))
+                        .border(1.dp, Color(0xFF00FFCC).copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "SCANNER-FOKUS:",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = Color(0xFF00FFCC),
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp
+                        )
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val isLiberate = scannerPeacefulMode == com.example.ui.viewmodel.ScannerPeacefulMode.LIBERATE
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (isLiberate) Color(0xFF00E5FF) else Color.Black.copy(alpha = 0.5f))
+                                .border(1.dp, if (isLiberate) Color(0xFF00E5FF) else Color.Gray.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                .clickable { viewModel.setScannerPeacefulMode(com.example.ui.viewmodel.ScannerPeacefulMode.LIBERATE) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "✨ BEFREIEN",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (isLiberate) Color.Black else Color.LightGray,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.5.sp
+                                )
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (!isLiberate) Color(0xFFFF9900) else Color.Black.copy(alpha = 0.5f))
+                                .border(1.dp, if (!isLiberate) Color(0xFFFF9900) else Color.Gray.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                .clickable { viewModel.setScannerPeacefulMode(com.example.ui.viewmodel.ScannerPeacefulMode.RECORD_HISTORY) }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "📜 FESTHALTEN",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = if (!isLiberate) Color.Black else Color.LightGray,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 9.5.sp
+                                )
+                            )
+                        }
+                    }
+                }
+
                 // Central Interactive Radar Scanner Canvas (Harmonic colors, zero red lines)
                 RadarScannerCanvas(
                     blips = radarBlips,
                     filterMode = filterMode,
                     infraLightColor = infraLightColor.color,
+                    sweepSpeedMs = 3000,
                     isScanning = isScanning,
+                    isLiberateMode = (scannerPeacefulMode == com.example.ui.viewmodel.ScannerPeacefulMode.LIBERATE),
                     isLiberating = isLiberatingAnomalies,
                     isCalibrating = calibrationTelemetry.isCalibrating,
                     calibrationProgress = calibrationTelemetry.calibrationProgress,
@@ -748,31 +814,64 @@ fun ScannerScreen(
                     onResetCalibration = { viewModel.resetCalibration() }
                 )
 
-                // Primary Action Button: Liberate / Harmonize
-                Button(
-                    onClick = { viewModel.liberateRadarAnomalies() },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("liberate_spirits_button"),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF)),
-                    shape = RoundedCornerShape(12.dp)
+                // Primary Action Buttons: Liberate (Ins Licht) & Hold in History (Dokumentieren)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Send,
-                        contentDescription = null,
-                        tint = Color.Black
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "✨ GEISTER & ANOMALIEN BEFREIEN",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = Color.Black,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
+                    Button(
+                        onClick = { viewModel.liberateRadarAnomalies() },
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .height(50.dp)
+                            .testTag("liberate_spirits_button"),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
                         )
-                    )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "✨ BEFREIEN",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = Color.Black,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.5.sp
+                            )
+                        )
+                    }
+
+                    Button(
+                        onClick = { viewModel.captureEntity() },
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .height(50.dp)
+                            .testTag("capture_to_history_button"),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9900)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "📜 FESTHALTEN",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = Color.Black,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.5.sp
+                            )
+                        )
+                    }
                 }
             }
 
@@ -1007,6 +1106,7 @@ fun ScannerScreen(
                     onToggleAutoDimensionSealing = { viewModel.toggleAutoDimensionSealing() },
                     onCloseDimension = { viewModel.closeDimensionRift() },
                     onSpawnDimension = { viewModel.spawnDimensionRift() },
+                    onLiberateEntity = { viewModel.liberateRadarAnomalies() },
                     onCaptureEntity = { viewModel.captureEntity() },
                     onSpawnThreat = { viewModel.spawnDemonOrVampire() },
                     onOpenSigilForge = { showSigilForgeDialog = true }

@@ -87,7 +87,7 @@ enum class SigilType(
         id = "sigil_shield",
         title = "Erzengel Schutz-Siegel (Aegis)",
         symbol = "🛡️",
-        purpose = "Dämpft EMF-Spikes & Angriffe",
+        purpose = "Dämpft EMF-Spikes & harmonisiert Anomalien",
         colorHex = 0xFF00FFCC,
         durationSeconds = 120,
         description = "Errichtet ein geschütztes Machtfeld. Verhindert Bedrohungs-Invasionen."

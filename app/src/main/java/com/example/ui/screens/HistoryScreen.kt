@@ -375,7 +375,9 @@ fun HistoryScreen(
             onDelete = { viewModel.deleteGhost(it) },
             onFree = { viewModel.freeGhost(it) },
             onUpdateNotes = { g, notes -> viewModel.updateGhostNotes(g, notes) },
-            onSpeakText = { text -> viewModel.spiritTtsManager.speak(text) }
+            onSpeakText = { text -> viewModel.spiritTtsManager.speak(text) },
+            onSell = { viewModel.sellGhost(it) },
+            sellPrice = viewModel.calculateGhostSellPrice(ghost)
         )
     }
 

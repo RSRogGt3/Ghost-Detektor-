@@ -470,8 +470,8 @@ fun FilterSettingsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("AUTO-DESTROY (NOT-BANNUNG)", color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
-                        Text("Bannt kritische Geister bei Gefahrenstufe 5 sofort", color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
+                        Text("AUTO-HARMONISIERUNG & BEFREIUNG", color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 11.5.sp)
+                        Text("Befreit kritische Geister bei Stufe 5 friedlich oder hält sie im Verlauf fest", color = InfraGreenTextPrimaryVariant, fontFamily = FontFamily.Monospace, fontSize = 10.sp)
                     }
                     Switch(
                         checked = isAutoDestroyEnabled,
@@ -1214,7 +1214,7 @@ fun FilterSettingsScreen(
                 expandedMaxHeight = 400.dp
             ) {
                 Text(
-                    text = "Geister-Detektor Pro v1.5\nInfra-Grün HUD & Spektral-Scanner Engine\nOffline & Gemini AI Spirit Box Protokoll",
+                    text = "Geister-Detektor Pro v1.6\nInfra-Grün HUD & Spektral-Scanner Engine\nEntschärfter Scanner & Befreiungs-Protokoll\nOffline & Gemini AI Spirit Box Protokoll",
                     style = MaterialTheme.typography.bodySmall.copy(color = InfraGreenTextPrimary, fontFamily = FontFamily.Monospace, fontSize = 11.sp)
                 )
                 Button(
